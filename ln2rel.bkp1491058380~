@@ -1,0 +1,33 @@
+#!/bin/bash
+# convert absolute symlink to relative
+for PARAM in "$@"; do
+	if test -h "$PARAM"; then
+		# readlink and replace
+		TG="$(readlink -m "$PARAM")"
+		LN="$(realpath -s "$PARAM")"
+		
+		>&2 echo "LN: '${LN}'"
+		>&2 echo "TG: '${TG}'"
+		# find longest prefix
+		PREFIX="$(printf "%s\n%s\n" "${LN}" "${TG}" | sed -e 'N;s/^\(.*\).*\n\1.*$/\1/')"
+		>&2 echo "PREFIX: '${PREFIX}'"
+		
+		# remove prefix: $ foo=${string#$prefix}
+		LN1="${LN#$PREFIX}"
+		TG1="${TG#$PREFIX}"
+		
+		>&2 echo "LN1: '${LN1}'"
+		>&2 echo "TG1: '${TG1}'"
+		# add as many '../' as '/'-s in $LN1
+		TGNEW="$(printf "%s" "${LN1}" | sed -e 's/[^/]\+$//; s/[^/]\+/\.\./')"
+		# add $TG1
+		TGNEW="${TGNEW}$TG1"
+		>&2 echo "TGNEW: '${TGNEW}'"
+
+		if [ "${TG}" != "${TGNEW}" ]; then
+			ln -sfT "${TGNEW}" "${PARAM}"
+			>&2 echo "'${PARAM}' -> ${TG} >> -> ${TGNEW}"
+		fi
+	else >&2 echo "ln2abs: '${PARAM}' is not a symlink"
+	fi
+done

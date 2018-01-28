@@ -1,0 +1,5 @@
+#!/bin/bash
+
+for param in "$@"; do 
+  cat "$param" | iconv -f cp1251 -t UTF-8
+done

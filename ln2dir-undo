@@ -1,0 +1,13 @@
+#!/bin/sh
+for PARAM in "$@"; do
+	if test -d "$PARAM"; then
+	PARENT="$(dirname "$PARAM")"
+	>&2 echo "ln2dir-undo: mv ${PARAM}/* -> ${PARENT}"
+		TMP="$(mktemp -dp .)"
+		mv "$PARAM"/* "$TMP"
+		rmdir "$PARAM"
+		mv "$TMP"/* "$PARENT"/
+		rmdir "$TMP"
+	else >&2 echo "ln2dir-undo: '${PARAM}' is not a directory"
+	fi
+done

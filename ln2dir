@@ -1,0 +1,14 @@
+#!/bin/sh
+# moves each symlink to dir with file's name
+for PARAM in "$@"; do
+	if test -h "$PARAM"; then
+		NAME="$(basename "$PARAM")"
+		PARAM_DIR="$(dirname "$PARAM")"
+		cd "$PARAM_DIR"
+		TMP="$(mktemp -dp .)"
+		mv "$NAME" "$TMP"
+		mv "$TMP" "$NAME"
+		>&2 echo "${PARAM} -> ${PARAM_DIR}/${NAME}/"
+	else >&2 echo "ln2dir: '${PARAM}' is not a symlink"
+	fi
+done

@@ -1,0 +1,5 @@
+#!/bin/bash
+for param in "$@"
+do
+  date -d@$param +'%Y-%m-%d %H:%M:%S (%:z)'
+done

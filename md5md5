@@ -1,0 +1,5 @@
+#!/bin/bash
+
+for param in "$@"
+do find "$param" -type f -exec md5sum {} + | sort -k1 | cut -c1-32 | md5sum | cut -c1-32
+done

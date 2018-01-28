@@ -1,0 +1,38 @@
+#!/usr/bin/perl -w
+
+# like 'tpage' but with utf-8 support
+# https://stackoverflow.com/questions/27361312/evaluation-of-template-toolkit-code-samples
+# https://stackoverflow.com/a/27364126
+
+use strict;
+use warnings;
+
+use utf8;
+binmode(STDOUT,':utf8');
+binmode(STDERR,':utf8');
+
+use Template;
+
+sub decode_1251 {
+	use Encode;
+	map { $_ = decode('windows-1251', $_) } @_;
+} 
+
+@ARGV
+  or die("usage: $0 {template} [{key}={val} [...]]\n");
+
+my $template = shift;
+my %args; # = %ENV;
+
+my @params = decode_1251(@ARGV);
+
+for (@params) {
+  my $param = $_;
+  # utf8::decode($param);
+  my ($k, $v) = split(/=/, $param, 2);
+  $args{$k} = $v;
+}
+
+my $tt    = Template->new( {ENCODING => 'utf8'} );
+$tt->process ($template, \%args)
+   or die($tt->error);

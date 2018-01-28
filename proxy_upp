@@ -1,0 +1,14 @@
+#!/bin/bash
+# set upp proxy
+
+if [[ $0 =~ proxy_upp$ ]]; then
+  echo 'to set variable in shell, run with dot:'
+  echo '. proxy_upp'
+  echo ' '
+else
+  echo 'setting proxy to upp:'
+  export http_proxy=http://10.0.2.1:3128
+  export https_proxy=https://10.0.2.1:3128
+fi
+  echo '$http_proxy='$http_proxy
+  echo '$https_proxy='$https_proxy

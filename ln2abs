@@ -1,0 +1,14 @@
+#!/bin/bash
+# convert relative symlink to absolute
+for PARAM in "$@"; do
+	if test -h "$PARAM"; then
+		# readlink and replace
+		OLD="$(readlink "$PARAM")"
+		NEW="$(readlink -m "$PARAM")"
+		>&2 echo "'${PARAM}' -> ${OLD} >> -> ${NEW}"
+		if [ "${OLD}" != "${NEW}" ]; then
+			ln -sfT "${NEW}" "${PARAM}"
+		fi
+	else >&2 echo "ln2abs: '${PARAM}' is not a symlink"
+	fi
+done

@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# 'cd-up' - cd to parent dir of symlink's target
+#
+# to make cd works run this script with dot: 
+# '. cd-up symlink-filename'
+# or add alias ro .bashrc as follows:
+#
+# alias cd-up='. cd-up'
+
+t=$(readlink -f -- "$1"); cd "${t%/*}";

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+for param in "$@"
+do 
+   lwp-request -m get -USsed "$param"
+done

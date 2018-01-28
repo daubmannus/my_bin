@@ -1,0 +1,7 @@
+#!/bin/bash
+for PARAM in "$@"; do
+	echo '<html><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8">'
+	echo "<title>${PARAM}</title></head><body width=100%><table border=1 width=100%>"
+	cat "$PARAM" | perl_ -pe 's|([^\t\n]+)|<td>$1</td>|g; s|\t||g; s|^(.*)$|<tr>$1</tr>|;'
+	echo '</table></body></html>'
+done

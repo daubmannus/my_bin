@@ -1,0 +1,14 @@
+#!/bin/bash
+# set proxy off
+
+if [[ $0 =~ proxy_off$ ]]; then
+  echo 'to set variable in shell, run with dot:'
+  echo '. proxy_off'
+  echo ' '
+else
+  echo 'unsetting proxy:'
+  unset http_proxy
+  unset https_proxy
+fi
+  echo '$http_proxy='$http_proxy
+  echo '$https_proxy='$https_proxy

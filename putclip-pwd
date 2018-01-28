@@ -1,0 +1,2 @@
+#!/bin/bash
+cygpath -w $(pwd) | putclip

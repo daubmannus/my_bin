@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for param in "$@"; do
+  url="$(head -n1 <"$param")"
+  #firefox "${url}" &>/dev/null &
+  echo "${url}"
+done

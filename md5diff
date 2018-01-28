@@ -1,0 +1,2 @@
+#!/bin/bash
+diff <(sort <(md5deep -b -r "$1") ) <(sort <(md5deep -b -r "$2") )

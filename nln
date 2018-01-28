@@ -1,0 +1,11 @@
+#!/bin/sh
+# rename symlink(s) to 'old-name@path%to%target
+for PARAM in "$@"; do
+	if test -h "$PARAM"; then
+		# readlink and replace / with %
+		NAME=""$(basename "$PARAM")"@$(readlink "$PARAM" | tr '/' '%' )"
+		>&2 echo "${PARAM} -> ${NAME}"
+		mv "$PARAM" "$NAME"
+	else >&2 echo "nln: '${PARAM}' is not a symlink"
+	fi
+done
