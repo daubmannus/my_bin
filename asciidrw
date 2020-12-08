@@ -1,0 +1,165 @@
+#!/usr/bin/perl -w
+use strict;
+use warnings;
+
+use Data::Dump 'dump';
+use feature 'say';
+
+################ SETTINGS
+my %keys = ( # arrows
+	_exit     => chr 27,  # esc
+	_help     => 'k1',
+	_redefine => 'k2',
+	up        => 'ku',
+	down      => 'kd',
+	right     => 'kr',
+	left      => 'kl',
+	upright   => 'pgdn',
+	upleft    => 'pgup',
+	downright => chr 13,  # enter
+	downleft  => chr 9,   # tab
+	forward   => 'del',   # del
+	backward  => chr 127, # backspace
+);
+################ MAIN
+require Term::Screen;
+my $scr = new Term::Screen 
+|| die "Something's wrong with Term::Screen - $!\n";
+my $tty_width  = $scr->cols() - 1;
+my $tty_height = $scr->rows() - 1;
+
+# my ($x,$y) = (int($tty_width/2),int($tty_height/2)); 
+my ($x,$y) = (0,0); 
+
+my @page = map [(' ')x($tty_height+1)], (0..($tty_width+1));
+
+$scr->clrscr();
+my $c;
+my $char = ' ';
+
+# &show_help;
+
+show_page(' ',$x,$y);
+
+while( defined($c = $scr->noecho()->getch()) && ($c ne $keys{_exit}) ) {
+	my ($dx,$dy) = proceess_key($c,\%keys);
+	($x,$y) = rules($x,$y,$dx,$dy);
+	$char = $page[$x][$y];
+	
+	if ($c eq $keys{forward}) {
+		my $o = ord($char) + 1;
+		if($o>126) { $o = 33 }
+		$char = chr $o;
+	} elsif ($c eq $keys{backward}) {
+		my $o = ord($char) - 1;
+		if($o<33) { $o = 126 }
+		$char = chr $o;
+	}
+	
+	if($c=~/^[^\x00-\x1F\x7F]$/) {
+		$char = $c;
+	}
+	
+	show_page($char,$x,$y);
+	$page[$x][$y]=$char;
+
+}
+
+$scr->clrscr();
+exit 0;
+
+
+####################### SUBS
+sub screen_save { print "\033[?1049h\033[H" }
+sub screen_restore { print "\033[?1049l" }
+
+sub show_page { #arg: text [x y]
+	my $text   = shift;
+	my ($x,$y) = @_;
+	unless( (defined $x) && (defined $y) ) { ($x,$y) = (0,0) }
+	$scr->at($y,$x)->puts("$text");
+}
+sub proceess_key { # arg: got_char (Term::Screen->getchar), \%keys
+	my $got_char = shift;
+	my %keys = %{ shift @_ };
+	if   ($got_char eq $keys{left} )      { return (-1, 0) }
+	elsif($got_char eq $keys{right})      { return ( 1, 0) }
+	elsif($got_char eq $keys{up}   )      { return ( 0,-1) }
+	elsif($got_char eq $keys{down} )      { return ( 0, 1) }
+	elsif($got_char eq $keys{upright}  )  { return ( 1,-1) }
+	elsif($got_char eq $keys{upleft}   )  { return (-1,-1) }
+	elsif($got_char eq $keys{downright})  { return ( 1, 1) }
+	elsif($got_char eq $keys{downleft} )  { return (-1, 1) }
+	elsif($got_char eq $keys{_help} )     { &show_help;     return ( 0, 0) }
+	elsif($got_char eq $keys{_redefine} ) { &redefine_keys; return ( 0, 0) }
+	elsif( length $got_char == 1 
+		   && ord $got_char > 31 )     { $char = $got_char; return ( 0, 0) }
+	else                                  { return ( 0, 0) } 
+		
+}
+sub rules {
+	my ($x,$y,$dx,$dy) = @_;
+
+	# check_tty_border
+
+	unless ( 
+	($x+$dx<0) 
+	||        
+	($x+$dx>$tty_width)
+	||
+	($y+$dy<0) 
+	||        
+	($y+$dy>$tty_height)
+	) { $x+=$dx; $y+=$dy }
+	
+	# # teleport
+	# if   ($x+$dx<0)            { $x = $tty_width }
+	# elsif($x+$dx>$tty_width) { $x = 0 }
+	# else                       { $x+=$dx }
+	# if   ($y+$dy<0)            { $y = $tty_height }
+	# elsif($y+$dy>$tty_height)  { $y = 0 }
+	# else                       { $y+=$dy }
+
+	return ($x,$y);
+}
+sub show_help { 
+	&screen_save;
+	print "press character and draw with it\n\n\r";
+	foreach my $key (sort {$b cmp $a} keys %keys) { print "$key [".key_str($keys{$key})."]\n\r" }
+	print "\n\rpress any key to resume";
+	while(not $scr->key_pressed()) {} # wait
+	&screen_restore;
+}
+
+sub redefine_keys { 
+	&screen_save;
+	my %new_keys;
+	print "    press key for:\n\r";
+	foreach my $key (sort {$a cmp $b} keys %keys) {
+		my $new_key;
+		until(defined $new_key) {
+			print "$key [";
+			$new_key = $scr->noecho()->getch();
+			print key_str($new_key); print "]\n\r"; 
+			# key must be unique!
+			if( my @dup = grep { $new_key eq $new_keys{$_} } keys %new_keys ) {
+				printf "    defined as '%s'!\n\r", key_str($dup[0]);
+				redo;
+			}
+		}
+		$new_keys{$key} = $new_key;
+	}
+	%keys = %new_keys;
+	print "\n\rpress any key to resume";
+	while(not $scr->key_pressed()) {} # wait
+	&screen_restore;
+}
+sub key_str {
+	my $c = shift;
+	my $o = ord($c);
+	if($o < 32) { return "<$o>" } 
+	elsif(length $c == 1) { return "$c <$o>" }
+	else { return $c }
+}
+
+	# print dump \@map; die;

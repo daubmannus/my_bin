@@ -1,0 +1,27 @@
+#!/bin/bash
+
+first="$(readlink -e $1)"
+if ! test -d "$first"; then echo "paths missing!"; exit 11; fi
+first="${first%/}"'/.md5'
+if ! test -f "$first"; then echo "'$first' missing!"; exit 12; fi
+if test -z "$2"; then second="$(readlink -e .)"; else second="$2"; fi
+if ! test -d "$second"; then echo "'$second' wrong second path!"; exit 13; fi
+second="${second%/}"'/.md5'
+if ! test -f "$second"; then echo "'$second' missing!"; exit 14; fi
+if test "$first" = "$second"; then echo "both paths are the same!"; exit 15; fi
+
+printf "\n----------------------------------------\n"
+echo "  '${first%.md5}'"
+echo "vs"
+echo "  '${second%.md5}'"
+echo "----------------------------------------"
+
+difference="$(diff "$first" "$second")"
+
+if test -z "$difference"; then
+	echo "SAME!"
+	exit 0
+else
+	echo "$difference"
+	exit 4
+fi

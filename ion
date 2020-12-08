@@ -1,0 +1,32 @@
+#!/bin/bash
+################################################################
+# prints file(s) description
+################################################################
+[[ ! -n $DIRINFO_FN ]] \
+	&& DIRINFO_FN=( \
+		'README' \
+		'descript.ion' \
+	)
+[[ ! -n $DESCR_LINE_START ]] \
+	&& DESCR_LINE_START="  "
+if [ -z "$1" ]; then set -- "$(pwd)"; fi
+for fn in "$@"; do
+	[[ -n $2 ]] \
+		&& echo "$fn:"
+	for dirinfo_fn in ${DIRINFO_FN[@]}; do 
+		dirinfo_fn="$(dirname $fn)/$dirinfo_fn"
+		[[ -f $dirinfo_fn ]] \
+			&& bfn="^$(basename $fn) " \
+			&& output="$(\
+				grep  "$bfn" "$dirinfo_fn" \
+				| sed 's/'"$bfn"'//' \
+				| sed -e 's/\\n'$(printf "\4")'.\+$//' \
+				| sed -e 's/\\n/\\n'"$DESCR_LINE_START"'/g' \
+			)" \
+			&& [[ -n $output ]] \
+				&& echo -e "${DESCR_LINE_START}${output}"
+				# above replaces \n, \t &c.,
+				#   removes basename and text after EOT (ascii code 4)
+				#   and \n -> "  \t"
+	done
+done

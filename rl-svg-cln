@@ -1,0 +1,4 @@
+#!/bin/perl -i.bkp -0777p
+
+s|<defs>.*</defs>||sg;
+s|</?g(?: [^>]*)?>||sg;

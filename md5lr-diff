@@ -1,0 +1,88 @@
+#!/bin/bash
+# md5l-diff recursive
+# depend on 
+#   'treep'
+#   'md5l-diff'
+
+hr() {
+	echo "========================================"
+	echo "========================================"
+}
+
+first="$(readlink -e $1)"
+if ! test -d "$first"; then echo "paths missing!"; exit 11; fi
+if test -z "$2"; then second="$(readlink -e .)"; else second="$(readlink -e "$2")"; fi
+if ! test -d "$second"; then echo "'$second' wrong second path!"; exit 13; fi
+if test "$first" = "$second"; then echo "both paths are the same!"; exit 15; fi
+
+# ========================================
+echo
+hr
+
+echo "  '$first'"
+echo "vs"
+echo "  '$second'"
+
+hr
+# ========================================
+
+# compare structure
+diff_dirs="$(diff <(treep "$first") <(treep "$second"))"
+
+
+if ! test -z "$diff_dirs"; then \
+	printf "$diff_dirs\n\n"
+	
+	read -r -p "stop? [Y/n] " __response
+	[[ "$__response" =~ (^$)|(^[yY][eE][sS]|[yY])$ ]] \
+	&& exit 3
+fi
+
+# update .md5's
+read -r -p "update .md5's? [Y/n] " __response
+[[ "$__response" =~ (^$)|(^[yY][eE][sS]|[yY])$ ]] \
+&& md5lr "$first" \
+&& md5lr "$second"
+
+# ========================================
+hr
+
+dirlist() {
+	for first_current in "$1"/*; do
+		if test -d "$first_current"; then
+			rel_dir="${first_current#$first/}"
+			second_current="$second/$rel_dir"
+			# compare and recursive run with current dir only is it's in both trees
+			if test -d "$second_current"; then \
+				md5_diff_out=$(md5l-diff "$first_current" "$second_current")
+				if [ $? != 0 ]; then \
+					printf "$md5_diff_out\n"
+					(( md5diffs+=1 ))
+				fi
+				dirlist "$first_current"
+			fi
+		fi
+	done
+
+}
+md5diffs=0
+dirlist "$first"
+
+# ========================================
+
+(( md5diffs == 0 )) && [ -z "$diff_dirs" ] \
+	&& echo "CONGRATS: ALL THE SAME!" \
+	&& exit 0
+
+
+echo
+# ========================================
+hr
+
+printf "\n$md5diffs dirs differ by md5\n"
+
+if ! test -z "$diff_dirs"; then \
+	echo "and differences in structure!"
+fi
+
+exit 1

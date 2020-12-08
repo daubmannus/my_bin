@@ -1,0 +1,134 @@
+#!/bin/perl -0777p
+use strict;
+use warnings;
+use utf8;
+binmode(STDOUT,':utf8');
+binmode(STDERR,':utf8');
+
+use Data::Dump 'dump';
+use feature 'say';
+
+#########################################
+
+# text of file
+my $svg = $_;
+
+# pick groups <g id="name">...</g>
+# and remove them from svg
+my $re = qr|<g id="([^"]+)">(.*?)</g>|s;
+my %grp = ( $svg =~ /$re/g );
+# remove
+$svg =~ s/$re//g;
+
+# remove </svg> in end
+$svg =~ s|</svg>.*$||s;
+
+# clean values
+foreach my $val (values %grp) {
+	$val =~ s/\s+/ /g;
+};
+
+
+my $korr = '';
+
+#######################################
+# for each number in group:
+# korr = printed - cutted + original
+#######################################
+
+# before first d=" just copy
+# $re = qr/^.*?d="/s;
+# $grp{printed} =~ $re; $korr = $&;
+# # ... and remove
+# foreach my $key (keys %grp) {
+	# $grp{$key} =~ s/$re//;
+# }
+
+$re = qr/^.*?d="/s;
+
+while( $grp{printed} =~ $re ) { 
+
+	# copy to next "d"
+	$grp{printed} =~ $re; $korr .= $&;
+	# ... and remove
+	foreach my $key (keys %grp) {
+		$grp{$key} =~ s/$re//;
+	}
+
+
+	# compare and calculate
+
+	my %d; # current path commands (in each group)
+		   # arrays of commands
+	# get them
+	my $re = qr/^[^"]*/s;
+	my $re_isnum  = qr/-?[\d.]+/;
+	my $re_notnum = qr/[^-\d.]+/;
+	foreach my $key (keys %grp) {
+		$grp{$key} =~ $re; my $str = $&;
+		$str =~ s/[\s\n\r]//gsi; # clear
+		$str =~ s/($re_isnum)-/$1,-/g; # insert , before -
+		
+		# my @arr = ( $str =~ /(-?[\d.]+|[^-\d.]+)/g ); # split string num/not-num
+		my @arr = ( $str =~ /($re_isnum|$re_notnum)/gs ); # split string num/not-num
+		$d{$key} = \@arr;
+		$grp{$key} =~ s/$re//; # and remove
+	}
+
+	my $dump;
+	$dump .= "\nprinted(".scalar @{$d{printed}}."): \n"."@{$d{printed}}";
+	$dump .= "\ncutted(".scalar @{$d{cutted}}."): \n"."@{$d{cutted}}";
+	$dump .= "\noriginal(".scalar @{$d{original}}."): \n"."@{$d{original}}";
+
+	# compare lenght
+	# unless( scalar @{$d{printed}} == scalar @{$d{cutted}} and scalar @{$d{cutted}} == scalar @{$d{original}} ) {
+		# die "Brocken chain, lenghts differ!\n$dump\n";
+	# }
+	
+	###################
+	# for debugging
+	###################
+	# die "\n$dump\n";
+	
+	for( my $i = 0; $i < scalar @{$d{printed}}; ++$i ) {
+		# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		# compare all isnum or equal
+		# die "Brocken chain!\n";
+
+		if( $d{printed}[$i] =~ /^$re_isnum$/ ) { 
+			unless( $d{cutted}[$i] =~ /^$re_isnum$/ and $d{original}[$i] =~ /^$re_isnum$/ ) {
+				die "\n$dump\n\nBrocken chain!\n($i: $d{printed}[$i] $d{cutted}[$i] $d{original}[$i])\n";
+			}
+			
+			my $new = $d{printed}[$i] - $d{cutted}[$i] + $d{original}[$i];
+			# if( $new != $d{printed}[$i] ) { print "\n".$new."\n" }# else { print ' '.$new }
+			$korr .= $new;
+		} elsif(
+			$d{printed}[$i] eq $d{cutted}[$i] and $d{cutted}[$i] eq $d{original}[$i] 
+		) {
+			$korr .= $d{printed}[$i];
+		} else { 
+			die "\n$dump\n\nBrocken chain!\n($i: $d{printed}[$i] $d{cutted}[$i] $d{original}[$i])\n";
+		}
+	}
+	
+	# $korr =~ s/($re_isnum),-/$1-/g; # remove , before -
+	$svg .= "$korr\"/>\n\n";
+
+}
+
+# copy last piece
+$korr .= $grp{printed};
+
+
+# say $korr;
+# say $grp{printed};
+
+
+
+# restore </svg> in end
+$svg .= "\n\n</svg>\n";
+
+say $svg;
+
+$_ = '';

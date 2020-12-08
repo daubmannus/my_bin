@@ -1,6 +1,41 @@
 #!/bin/bash
+# md5 list 
+
+pass_by() {
+	rm .md5.tmp
+	printf "\033[2K\r"
+}
+
 if [ -z "$1" ]; then set -- "."; fi
-for param in "$@"
-do 
-find "$(readlink -e "$param")" -type f -exec md5sum {} + 
+for __param in "$@"
+do
+	printf "$__param"
+	cd "$__param"
+	for __name in *
+	do
+		[ -f "$__name" ] \
+		&& [ ! -h "$__name" ] \
+		&& md5sum "$__name"
+	done \
+	> .md5.tmp
+	if [ -s .md5.tmp ]
+	then
+		if [ -f .md5 ] 
+		then 
+			__diff="$( diff .md5 .md5.tmp )"
+			if [ -z "$__diff" ]
+			then
+				pass_by
+			else
+				mv .md5 .md5.bkp_"$(stat -c %Y .md5)"-"$(date +%s)"~ \
+				&& mv .md5.tmp .md5
+			fi
+		else
+			mv .md5.tmp .md5
+			echo
+		fi
+	else
+		pass_by
+	fi
 done
+

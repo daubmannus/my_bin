@@ -1,0 +1,12 @@
+#!/bin/bash
+#
+# 'cd-to' - cd to the dir of symlink's target
+#
+# to make cd works run this script with dot: 
+# '. cd-to symlink-filename'
+# or add alias ro .bashrc as follows:
+#
+# alias cd-to='. cd-to'
+REAL_PATH="$( cd "$1" ; pwd -P )"
+#echo $REAL_PATH
+cd "$REAL_PATH"

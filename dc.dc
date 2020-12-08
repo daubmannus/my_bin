@@ -1,0 +1,4 @@
+#!/bin/dc
+[do not use register '?' until 'q']pc
+[f[>]n?1d=?]s?
+l?x
