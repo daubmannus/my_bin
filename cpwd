@@ -1,2 +1,0 @@
-#!/bin/bash
-printf "$(cygpath -m "$(pwd)")" > /dev/clipboard 

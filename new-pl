@@ -1,7 +1,0 @@
-#!/bin/bash
-for param in "$@"
-do
-	# echo "$param"
-	cp ~/bin/new.pl "$param"
-	npp "$param"
-done

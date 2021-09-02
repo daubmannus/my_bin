@@ -1,0 +1,4 @@
+#!/bin/bash
+
+net rpc SHUTDOWN -C "I've shut you down." -f -I 192.168.0.101 -U theo%ghbdtn
+

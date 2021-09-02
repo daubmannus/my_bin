@@ -1,0 +1,16 @@
+#!/bin/bash
+
+MAC=00-1D-7D-A2-92-76
+Broadcast=255.255.255.255
+PortNumber=9
+
+# The WOL magic packet is composed of 
+# ffffffffffff (12 times f) 
+# followed by 16 times the destination MAC without colons (:).
+
+# The sed command is used here to remove colons (:) from the MAC 
+# and to add the \x hex specificator.
+
+echo -e $(echo $(printf 'f%.0s' {1..12}; printf "$(echo $MAC | sed 's/-//g')%.0s" {1..16}) | sed -e 's/../\\x&/g') \
+| nc -w1 -u -b $Broadcast $PortNumber
+

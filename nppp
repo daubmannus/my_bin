@@ -1,4 +1,0 @@
-#!/bin/sh
-# this runs npp-link under CygWin with windows-like paths
-
-npp-link -multiInst -notabbar -nosession -noPlugin $(cygpath -w $@)
