@@ -17,7 +17,7 @@ do
 		&& [ ! -h "$__name" ] \
 		&& md5sum "$__name"
 	done \
-	> .md5.tmp
+	| sort > .md5.tmp
 	if [ -s .md5.tmp ]
 	then
 		if [ -f .md5 ] 
