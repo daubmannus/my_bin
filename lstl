@@ -1,3 +1,40 @@
 #!/bin/bash
-# find * -maxdepth 0 -type f -exec stat --format="%n/%s/%Y" {} \;
-find * -maxdepth 0 -type f -exec lst {} \; >.lst
+# .lst list
+# output:
+#filename/size-in-bytes/last-modified-timestamp
+
+pass_by() {
+	rm .lst.tmp
+	# printf "\033[2K\r"
+}
+
+if [ -z "$1" ]; then set -- "."; fi
+for __param in "$@"
+do
+	# printf "$__param"
+	cd "$__param" 
+	
+	# find * -maxdepth 0 -type f -exec lst {} \; >.lst.tmp
+	find * -maxdepth 0 -type f -exec stat --format="%n/%s/%Y" {} \; >.lst.tmp
+	
+	if [ -s .lst.tmp ]
+	then
+		if [ -f .lst ] 
+		then 
+			__diff="$( diff .lst .lst.tmp )"
+			if [ -z "$__diff" ]
+			then
+				pass_by
+			else
+				mv .lst .lst.bkp_"$(stat -c %Y .md5)"-"$(date +%s)"~ \
+				&& mv .lst.tmp .lst \
+				&& echo "$__param"
+			fi
+		else
+			mv .lst.tmp .lst
+		fi
+	else
+		pass_by
+	fi
+	
+done
