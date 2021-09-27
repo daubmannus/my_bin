@@ -1,10 +1,11 @@
 #!/bin/bash
-if [ -z "$1" ]; then echo "\
-lst <filename> [...<filename>]
-  output (stat):
-filename/size-in-bytes/last-modified-timestamp\
-"; fi
 
-for filename in "$@"; do
+files_in_dir() {
+	ls -p | grep -v /
+}
+
+# NB: for current dir
+while IFS= read -r filename; do
 	stat --format="%n/%s/%Y" "$filename"
-done
+done < <(files_in_dir)
+
