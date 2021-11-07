@@ -1,0 +1,43 @@
+#!/bin/bash
+# compare .md5 lists only for summs
+
+if [ -z "$2" ] || [ "$1" == '--help' ]; then 
+	echo "\
+compares .md5 lists for summs only
+usage: md5ldiff <path-to-dir-1[/.md5]> <path-to-dir-2[/.md5]>
+"
+fi
+
+fn1="$1"; [ -d "$fn1" ] && fn1="${fn1%%/}/.md5"
+fn2="$2"; [ -d "$fn2" ] && fn2="${fn2%%/}/.md5"
+for fn in "$fn1" "$fn2"; do
+	[ ! -f "$fn" ] \
+		&& echo "error: '$fn'" is missing. >&2 && exit 2
+done
+
+is_diff=0
+while IFS= read -r line; do
+	printf "$line "
+	if [[ "$line" =~ [0-9a-f]{32} ]]; then
+		is_diff=1
+		md5="$line"; md5="${md5#> }"; md5="${md5#< }"
+		if   [[ "$line" =~ ^'< ' ]]; then
+			fn="$fn1"
+		elif [[ "$line" =~ ^'> ' ]]; then 
+			fn="$fn2"
+		else 
+			[[ ! "$md5" =~ ^[0-9a-f]{32}$ ]] \
+				&& echo "error: summ '$md5' is invalid." && exit 3
+			echo "error: invalid string above." >&2 && exit 4
+		fi
+		
+		# find filenames by md5 in corresponding file
+		while IFS= read -r fn_by_md5; do
+			printf "'$fn_by_md5' "
+		done < <(grep "$md5" "$fn" | rev | cut -d' ' -f1 | rev)
+	fi
+	echo
+done < <(diff <(sort "$fn1" | cut -d' ' -f1) <(sort "$fn2" | cut -d' ' -f1))
+
+[ $is_diff -gt 0 ] && exit 1
+exit 0
