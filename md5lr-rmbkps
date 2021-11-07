@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# after md5lr
+# start in current dir
+
+export SEARCH_PATTERN='.md5.bkp*~'
+export ERR_PATH_FN='/tmp/.err_path_fn'
+export LOG_FN='/tmp/.rmbkps_log'
+rm "$ERR_PATH_FN" 2>/dev/null
+rm "$LOG_FN" 2>/dev/null
+
+process_dir() {
+	# not to process dir with error again
+	[ -s "$ERR_PATH_FN" ] \
+		&& [[ "$(pwd)" == "$(cat $ERR_PATH_FN)" ]] \
+		&& return
+	# make sure that there are no extra files in dir
+	if [ $(ls -1 $SEARCH_PATTERN 2>/dev/null | wc -l) -gt 1 ]
+	then
+		pwd >"$ERR_PATH_FN"
+		echo "ERROR: too many .md5s in dir"; cat "$ERR_PATH_FN"; echo '==='
+		return
+	fi
+	
+	fn="$0"
+	md5ldiff .md5 "$fn" \
+		&& echo "rm $(pwd)/${fn#./}" >>"$LOG_FN" \
+		&& rm "$0" \
+		&& return
+	
+	# on md5ldiff nonzero exit:
+	echo '^^^'; pwd; echo '==='
+	
+}
+export -f process_dir
+
+find -name "$SEARCH_PATTERN" \
+	-execdir bash -c 'process_dir "$0"' {} \; 
+
+[ -s "$LOG_FN" ] \
+	&& echo "removed files list is in $LOG_FN"
+
+[ -s "$ERR_PATH_FN" ] \
+	&& rm "$ERR_PATH_FN" 2>/dev/null \
+	&& exit 1
+
+exit 0
+
