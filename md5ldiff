@@ -17,7 +17,7 @@ done
 
 is_diff=0
 while IFS= read -r line; do
-	printf "$line "
+	printf "%s " "$line" 
 	if [[ "$line" =~ [0-9a-f]{32} ]]; then
 		is_diff=1
 		md5="$line"; md5="${md5#> }"; md5="${md5#< }"
@@ -33,8 +33,9 @@ while IFS= read -r line; do
 		
 		# find filenames by md5 in corresponding file
 		while IFS= read -r fn_by_md5; do
-			printf "'$fn_by_md5' "
-		done < <(grep "$md5" "$fn" | rev | cut -d' ' -f1 | rev)
+
+			printf "'%s' " "${fn_by_md5#$md5  }"
+		done < <(grep "$md5" "$fn")
 	fi
 	echo
 done < <(diff <(sort "$fn1" | cut -d' ' -f1) <(sort "$fn2" | cut -d' ' -f1))
