@@ -10,7 +10,6 @@ pass_by() {
 }
 say_err() {
 	if [ -s "$__tmp_err_fn" ]; then
-		date -d@$(date +%s) +'%Y-%m-%d %H:%M:%S (%:z)' >>"$__err_fn"
 		echo "$1" >>"$__err_fn"
 		pwd >&2
 		cat "$__tmp_err_fn" > >(tee -a "$__err_fn" >&2)
@@ -22,7 +21,7 @@ cleanup() {
 	find . -name ".md5.*~" -size 0 -delete
 	# remove same backups
 	declare -A __tmp_arr
-	for __fn in `ls -t .md5*`; do
+	for __fn in `ls -t .md5* 2>/dev/null`; do
 		read cksm _ < <(md5sum "$__fn")
 		if ((__tmp_arr[$cksm]++)); then 
 			[ "$__fn" = '.md5' ] || [ "$__fn" = '.md5.err' ] && continue
@@ -36,11 +35,14 @@ for __param in "$@"
 do
 	printf "%s" "$__param"
 	cd "$__param"
-	[ -f .md5.err ] && mv .md5.err .md5.err.bkp_"$(stat -c %Y .md5)"-"$(date +%s)"~
-	for __name in *
+	[ -f .md5.err ] && mv .md5.err .md5.err.bkp_"$(stat -c %Y .md5.err)"-"$(date +%s)"~
+	for __name in "*"
 	do
-		if [ ! -d "$__name" ] && [ ! -h "$__name" ]
+		if [ ! "$__name" = '*' ] \
+			&& [ ! -d "$__name" ] \
+			&& [ ! -h "$__name" ]
 		then
+			echo "$__name" >> .tmp
 			md5sum ./"$__name" 2>"$__tmp_err_fn"
 			
 			[ -f "$__tmp_err_fn" ] \
