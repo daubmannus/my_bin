@@ -1,9 +1,21 @@
 #!/bin/bash
 # md5 list 
 
+__tmp_err_fn='/tmp/.md5l.err.'$(uuidgen)
+__err_fn='.md5.err'
+
 pass_by() {
 	rm .md5.tmp
 	printf "\033[2K\r"
+}
+say_err() {
+	if [ -s "$__tmp_err_fn" ]; then
+		date -d@$(date +%s) +'%Y-%m-%d %H:%M:%S (%:z)' >>"$__err_fn"
+		echo "$1" >>"$__err_fn"
+		pwd >&2
+		cat "$__tmp_err_fn" > >(tee -a "$__err_fn" >&2)
+	fi
+	rm "$__tmp_err_fn"
 }
 
 if [ -z "$1" ]; then set -- "."; fi
@@ -13,9 +25,13 @@ do
 	cd "$__param"
 	for __name in *
 	do
-		[ -f "$__name" ] \
-		&& [ ! -h "$__name" ] \
-		&& md5sum "$__name"
+		if [ ! -d "$__name" ] && [ ! -h "$__name" ]
+		then
+			md5sum -- "$__name" 2>"$__tmp_err_fn"
+			
+			[ -f "$__tmp_err_fn" ] \
+				&& say_err "$__name" 
+		fi
 	done \
 	| sort > .md5.tmp
 	if [ -s .md5.tmp ]
