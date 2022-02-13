@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# filename(s) as argument(s)
+# output: list of fullpaths of all hardlinks
+
+# exit codes, binary (if at least one argument failed):
+# x1 - is not a file in argument
+
+code=0
+for fn in "$@"
+do
+	echo "$fn"
+    [ ! -f "$fn" ] && ((code|=1)) && continue
+    find / -samefile "$fn"
+	echo
+done
+exit $code
+
