@@ -17,17 +17,31 @@ say_err() {
 	fi
 	rm "$__tmp_err_fn"
 }
+cleanup() {
+	# remove zero size backups
+	find . -name ".md5.*~" -size 0 -delete
+	# remove same backups
+	declare -A __tmp_arr
+	for __fn in `ls -t .md5*`; do
+		read cksm _ < <(md5sum "$__fn")
+		if ((__tmp_arr[$cksm]++)); then 
+			[ "$__fn" = '.md5' ] || [ "$__fn" = '.md5.err' ] && continue
+			rm "$__fn"
+	  fi
+	done
+}
 
 if [ -z "$1" ]; then set -- "."; fi
 for __param in "$@"
 do
 	printf "%s" "$__param"
 	cd "$__param"
+	[ -f .md5.err ] && mv .md5.err .md5.err.bkp_"$(stat -c %Y .md5)"-"$(date +%s)"~
 	for __name in *
 	do
 		if [ ! -d "$__name" ] && [ ! -h "$__name" ]
 		then
-			md5sum -- "$__name" 2>"$__tmp_err_fn"
+			md5sum ./"$__name" 2>"$__tmp_err_fn"
 			
 			[ -f "$__tmp_err_fn" ] \
 				&& say_err "$__name" 
@@ -53,5 +67,5 @@ do
 	else
 		pass_by
 	fi
+	cleanup
 done
-
