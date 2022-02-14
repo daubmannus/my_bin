@@ -36,13 +36,13 @@ do
 	printf "%s" "$__param"
 	cd "$__param"
 	[ -f .md5.err ] && mv .md5.err .md5.err.bkp_"$(stat -c %Y .md5.err)"-"$(date +%s)"~
-	for __name in "*"
+	for __name in *
 	do
 		if [ ! "$__name" = '*' ] \
 			&& [ ! -d "$__name" ] \
 			&& [ ! -h "$__name" ]
 		then
-			echo "$__name" >> .tmp
+			# echo "$__name" >> .tmp
 			md5sum ./"$__name" 2>"$__tmp_err_fn"
 			
 			[ -f "$__tmp_err_fn" ] \
