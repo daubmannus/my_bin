@@ -43,7 +43,7 @@ do
 			&& [ ! -h "$__name" ]
 		then
 			# echo "$__name" >> .tmp
-			md5sum ./"$__name" 2>"$__tmp_err_fn"
+			md5sum "$__name" 2>"$__tmp_err_fn"
 			
 			[ -f "$__tmp_err_fn" ] \
 				&& say_err "$__name" 
