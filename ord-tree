@@ -1,0 +1,35 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then set -- "."; fi
+for param in "$@"; do 
+	ERR=0
+	[[ $# -gt 1 ]] && echo =========================
+	# loop throw strings
+	while IFS= read -r line; do
+		if [[ $line == *'[error opening dir]'* ]]; then ERR=1; fi
+
+		if [[ $ERR == '0' ]] && [[ $line == *\[*\]* ]]; then
+			ino="${line#*[}"; 
+			size="${ino%%]*}"; size="${size##* }"
+			ino="${ino%% *}"
+			
+			if [[ $ino != $line ]]; then
+			
+				fn="$(find -inum $ino -print -quit)"
+				
+				line_prefix="${line%[*}"; line_prefix="${line_prefix%% }"
+				line_fn="${line#*]}"; line_fn="${line_fn#* }"
+				line="$line_prefix$line_fn"
+				
+				if [ -f "$fn" ] && [[ $line_fn != *' -> '* ]]; then
+					md5="$(md5sum "$fn" | cut -f1 -d' ')"
+					line="$line [$md5.$size]"
+				fi
+			fi
+		fi	
+		printf "%s\n" "$line"
+
+	done < <(tree -s --inodes "$param")
+
+done
+
