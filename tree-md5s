@@ -28,7 +28,7 @@ for param in "$@"; do
 			# remove * mark for executible files
 			line_fn="${line_fn%\*}"
 			
-			fn="$(find -inum $ino -print -quit)"
+			fn="$(find "$param" -inum $ino -print -quit)"
 			
 			line="$line_prefix$line_fn"
 			
