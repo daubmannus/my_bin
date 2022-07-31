@@ -8,6 +8,9 @@ for param in "$@"; do
 	
 	tree_output=$(tree -sF --inodes "$param") || ERR=1
 	
+	# regex template for inode, size etc.
+	re="(.*) *\[ *([0-9]+) +([0-9]+) *\] *(.*)" 
+	
 	# loop throw strings
 	while IFS= read -r line; do
 		# for older version of tree utility 
@@ -15,28 +18,24 @@ for param in "$@"; do
 		# uncomment next line
 		# if [[ $line == *'[error opening dir]'* ]]; then ERR=1; fi
 		
-		if [[ $ERR == '0' ]] && [[ $line == *\[*\]* ]]; then
-			ino="${line#*[}"; 
-			size="${ino%%]*}"; size="${size##* }"
-			ino="${ino%% *}"
+		
+		if [[ $ERR == '0' ]] && [[ $line =~ $re ]]; then
+			line_prefix="${BASH_REMATCH[1]}"
+			ino="${BASH_REMATCH[2]}"
+			size="${BASH_REMATCH[3]}"
+			line_fn="${BASH_REMATCH[4]}"
+
+			# remove * mark for executible files
+			line_fn="${line_fn%\*}"
 			
-			if [[ $ino != $line ]]; then
+			fn="$(find -inum $ino -print -quit)"
 			
-				fn="$(find -inum $ino -print -quit)"
-				
-				line_prefix="${line%[*}"; line_prefix="${line_prefix%% }"
-				line_fn="${line#*]}"; line_fn="${line_fn#* }"
-				
-				# remove * mark for executible files
-				line_fn="${line_fn%\*}"
-				
-				line="$line_prefix$line_fn"
-				
-				
-				if [ -f "$fn" ] && [[ $line_fn != *' -> '* ]]; then
-					md5="$(md5sum "$fn" | cut -f1 -d' ')"
-					line="$line [$md5.$size]"
-				fi
+			line="$line_prefix$line_fn"
+			
+			# for plane files and not symlinks
+			if [ -f "$fn" ] && [[ $line_fn != *' -> '* ]]; then
+				md5="$(md5sum "$fn" | cut -f1 -d' ')"
+				line="$line [$md5.$size]"
 			fi
 		fi	
 		printf '%s\n' "$line"
