@@ -22,7 +22,7 @@ cleanup() {
 	# remove same backups
 	declare -A __tmp_arr
 	for __fn in `ls -t .md5* 2>/dev/null`; do
-		read cksm _ < <(md5sum "$__fn")
+		read cksm _ < <(md5sum -- "$__fn")
 		if ((__tmp_arr[$cksm]++)); then 
 			[ "$__fn" = '.md5' ] || [ "$__fn" = '.md5.err' ] && continue
 			rm "$__fn"
@@ -43,7 +43,7 @@ do
 			&& [ ! -h "$__name" ]
 		then
 			# echo "$__name" >> .tmp
-			md5sum "$__name" 2>"$__tmp_err_fn"
+			md5sum -- "$__name" 2>"$__tmp_err_fn"
 			
 			[ -f "$__tmp_err_fn" ] \
 				&& say_err "$__name" 
