@@ -43,7 +43,7 @@ do
 			&& [ ! -h "$__name" ]
 		then
 			# echo "$__name" >> .tmp
-			md5sum -b -- "$__name" | tr '*' ' ' | 2>"$__tmp_err_fn"
+			md5sum -b -- "$__name" | tr '*' ' ' 2>"$__tmp_err_fn"
 			# checksums on digital preservation: the binary mode is the standard.
 			
 			[ -f "$__tmp_err_fn" ] \
