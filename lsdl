@@ -1,0 +1,72 @@
+#!/bin/bash
+# dir list 
+
+__tmp_err_fn='/tmp/.lsd.err.'$(uuidgen)
+__err_fn='.lsd.err'
+
+pass_by() {
+	rm .lsd.tmp
+	printf "\033[2K\r"
+}
+say_err() {
+	if [ -s "$__tmp_err_fn" ]; then
+		echo "$1" >>"$__err_fn"
+		pwd >&2
+		cat "$__tmp_err_fn" > >(tee -a "$__err_fn" >&2)
+	fi
+	rm "$__tmp_err_fn"
+}
+cleanup() {
+	# remove zero size backups
+	find . -name ".lsd.*~" -size 0 -delete
+	# remove same backups
+	declare -A __tmp_arr
+	for __fn in `ls -t .lsd* 2>/dev/null`; do
+		read cksm _ < <(md5sum "$__fn")
+		if ((__tmp_arr[$cksm]++)); then 
+			[ "$__fn" = '.lsd' ] || [ "$__fn" = '.lsd.err' ] && continue
+			rm "$__fn"
+	  fi
+	done
+}
+
+if [ -z "$1" ]; then set -- "."; fi
+for __param in "$@"
+do
+	printf "%s" "$__param"
+	
+	cd "$__param" 2>"$__tmp_err_fn"
+	
+	[ -f .lsd.err ] && mv .lsd.err .lsd.err.bkp_"$(stat -c %Y .md5.err)"-"$(date +%s)"~
+	[ -f "$__tmp_err_fn" ] && say_err "$__param" 
+	
+	while IFS= read -r __name
+	do
+		echo "${__name%%/}" 2>"$__tmp_err_fn"
+		
+	done < <(ls -d1 */ 2>"$__tmp_err_fn") \
+	| LC_COLLATE=C LC_ALL=C sort > .lsd.tmp 2>"$__tmp_err_fn"
+	 
+	[ -f "$__tmp_err_fn" ] && say_err "$__param" 
+
+	if [ -s .lsd.tmp ]
+	then
+		if [ -f .lsd ] 
+		then 
+			__diff="$( diff .lsd .lsd.tmp )"
+			if [ -z "$__diff" ]
+			then
+				pass_by
+			else
+				mv .lsd .lsd.bkp_"$(stat -c %Y .md5)"-"$(date +%s)"~ \
+				&& mv .lsd.tmp .lsd
+			fi
+		else
+			mv .lsd.tmp .lsd
+			echo
+		fi
+	else
+		pass_by
+	fi
+	cleanup
+done

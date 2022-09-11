@@ -1,0 +1,10 @@
+#!/bin/bash
+# dir list recursive
+# depend on 'lsdl'
+
+if [ -z "$1" ]; then set -- "."; fi
+for __param in "$@"
+do
+	find "$(readlink -e "$__param")" -type d -exec lsdl {} \;
+done
+
