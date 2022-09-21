@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ -z "$1" ]
+then set -- "."
+else DIV_STR='========================================'
+fi
+
+for param in "$@"
+do
+	[ ! -z "$DIV_STR" ] \
+		&& echo "$DIV_STR" \
+		&& echo "$param" \
+		&& echo "$DIV_STR"
+	
+	LC_ALL=C \
+	ls -a --file-type -l --group-directories-first --time-style=long-iso "$param" \
+		| awk '{printf $6" "$7"\t"$5"\t"; for (i=8; i<NF; i++) printf $i" "; print $NF}' \
+		| tail --lines=+2 \
+		| grep -vP '\t\.\.?/$' 
+		# | sort -t$'\t' -k 3
+done
