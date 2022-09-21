@@ -1,0 +1,18 @@
+#!/bin/bash
+DIR_PERM=775
+FILE_PERM=664
+OWNER='root'
+GROUP='power'
+[[ -z "$1" ]] \
+    && echo -e "${0##*/}: in given dirs recursively\n\t- sets owner '$OWNER' and group '$GROUP'\n\t- sets permission $DIR_PERM on dirs and $FILE_PERM on files" \
+    && echo -e "run with sudo!"\
+    && exit 1
+for param in "$@"
+do
+    cmd="chown -R $OWNER:$GROUP '$param'"
+    eval $cmd && echo "$cmd"
+    find "$param" \! -perm $DIR_PERM -type d \
+        -printf "chmod $DIR_PERM " -print -exec chmod $DIR_PERM {} \;
+    find "$param" \! -perm $FILE_PERM -type f \
+        -printf "chmod $FILE_PERM " -print -exec chmod $FILE_PERM {} \;
+done
