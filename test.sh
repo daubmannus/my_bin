@@ -1,6 +1,6 @@
 #!/bin/bash
 echo hey
-
-sudo shutdown -h now
+echo err >&2
+#sudo shutdown -h now
 
 
