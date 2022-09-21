@@ -1,0 +1,54 @@
+#!/bin/bash
+
+src_dirs=(\
+'/mnt/pc2010/work' \
+'/mnt/pc2010/transfer' \
+)
+target_root_dir='/mnt/t3nas1/BACKUP/pc2010'
+
+sync_cmd='rsync -trlHi'
+#sync_cmd='rsync -trlHic'
+#sync_cmd='rsync -tri'
+
+warn() {
+	echo "WARNING: $1" 1>&2
+}
+
+throw() {
+	ERR=$1
+	MSG="$2"
+	[ -z MSG ] && MSG='unknown'
+	[ -z ERRCODE ] && ERRCODE=254
+	echo "ERROR: $MSG" 1>&2
+	exit $ERR
+}
+
+dir_is_empty() {
+	[ -z "$1" ] && set -- "."
+	[ ! "$(ls -A $1 2>/dev/null)" ]
+}
+
+echo "================================"
+echo "====== BACK UP STARTED ========="
+date
+
+[ -d "$target_root_dir" ] \
+	|| throw 1 "target dir doesn't exist ($target_root_dir)"
+
+for dir in "${src_dirs[@]}"; do
+	if dir_is_empty "$dir"
+	then
+		warn "src dir is empty or doesn't exist, maybe isn't mounted ($dir)" 
+	else
+		cmd="$sync_cmd $dir $target_root_dir"
+		echo "==== $cmd" 
+
+		eval "$cmd"
+	fi
+done
+
+date
+echo "======== BACK UP DONE =========="
+echo "================================"
+
+
