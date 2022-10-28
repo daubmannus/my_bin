@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# alias olrs='olr | sort'
-
 #separator
 export SEP='  '
 
