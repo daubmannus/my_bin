@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# alias olrs='olr | sort'
+
+#separator
+export SEP='  '
+
+# only first arg to process
+ARG="$1"
+[ -z "$1" ] && ARG="."
+[ -d "$1" ] && cd "$1" && ARG='.'
+
+find "$ARG" -mindepth 1 -type d -exec sh -c 'printf "%s\n" "${1#./}/$SEP[/ dir]"' - {} \;
+find "$ARG" -type f -exec sh -c 'printf "%s" "${1#./}$SEP["; __md5=$(md5sum "$1" | cut -c1-32); stat --printf="$__md5.%s]\n" "$1"' - {} \;
+find "$ARG" -type l -exec sh -c 'printf "${1#./}$SEP[> "; readlink -n "$1"; echo "]"' - {} \;
+find "$ARG" -type b -exec sh -c 'printf "${1#./}$SEP[+ blockdev]\n"' - {} \;
+find "$ARG" -type c -exec sh -c 'printf "${1#./}$SEP[- chardev]\n"' - {} \;
+find "$ARG" -type p -exec sh -c 'printf "${1#./}$SEP[| fifo]\n"' - {} \;
+find "$ARG" -type s -exec sh -c 'printf "${1#./}$SEP[= socket]\n"' - {} \;
