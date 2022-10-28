@@ -1,2 +1,2 @@
 #!/bin/bash
-olr "$1" | LC_COLLATE="en_US.UTF-8" sort
+olr "$1" | LC_ALL=C sort
