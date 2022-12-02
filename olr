@@ -25,3 +25,7 @@ find "$ARG" -type b -exec sh -c 'printf "${1#./}$SEP[$TSFX_blockdev]\n"' - {} \;
 find "$ARG" -type c -exec sh -c 'printf "${1#./}$SEP[$TSFX_chardev]\n"' - {} \;
 find "$ARG" -type p -exec sh -c 'printf "${1#./}$SEP[$TSFX_fifo]\n"' - {} \;
 find "$ARG" -type s -exec sh -c 'printf "${1#./}$SEP[$TSFX_socket]\n"' - {} \;
+
+# to cut off mtime:
+# alias olr-t="sed 's/][^]].*$/]/'"
+# and | olr-t
