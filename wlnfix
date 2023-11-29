@@ -1,0 +1,15 @@
+#!/bin/bash
+# fix windows symlinks <SYMLINKD>
+if [ -z "$1" ]; then set -- "."; fi
+for param in "$@"
+do 
+	find "$(readlink -e "$param")" -type l -exec sh -c '
+		__fn="$1"
+		__trg="$(readlink -n "$__fn")"
+		if [ -d "$__trg" ]; then
+			winln -sdf "$__trg" "$__fn"
+			echo "'"'"'$__fn'"'"' -> '"'"'$__trg'"'"'"
+		fi
+	' sh {} \; 
+done
+
