@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# bytes to human readable: PiB TiB GiB MiB KiB
+# input as args or stdin
+
+input() {
+	local input=""
+	if [[ -p /dev/stdin ]]; then
+		input="$(cat -)"
+	else
+		input="${@}"
+	fi
+	[[ -z "${input}" ]] && return 1
+	
+	echo "$input"
+}
+
+bytes2HiB() {
+	local sfx=(bytes KiB MiB GiB TiB PiB)
+	echo -n "$1 bytes = "
+	local str=''
+	for i in ${!sfx[@]}; do
+		str="$((num%1024)) ${sfx[$i]} $str"
+		num=$((num/1024))
+		(( $num == 0 )) && break
+	done
+	echo $str
+}
+
+while IFS= read -r line; do
+	while IFS= read -r num; do
+		[[ "$num" =~ ^[0-9]+$ ]] || continue
+		bytes2HiB $num
+	done < <(echo "$line" | tr ' ' '\n')
+done < <(input "${@}")
