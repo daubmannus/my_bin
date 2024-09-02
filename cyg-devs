@@ -1,0 +1,4 @@
+#!/bin/bash
+for F in /dev/s* ; do echo -n "$F"; echo -ne "\t"; echo "$(cygpath -w $F)" ; done
+#for F in /dev/s* ; do echo "$F -- $(cygpath -w $F)" ; done
+#for F in /dev/s* ; do echo -e "$F\t$(cygpath -w $F)" ; done
