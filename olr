@@ -12,6 +12,9 @@ export TSFX_chardev='-'
 export TSFX_fifo='|'
 export TSFX_socket='='
 
+# dot as decimal separator
+export LC_NUMERIC=C
+
 # only first arg to process
 ARG="$1"
 [ -z "$1" ] && ARG="."
