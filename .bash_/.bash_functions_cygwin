@@ -1,0 +1,20 @@
+#!/bin/bash
+# sorry for hashbang, it's just for correct language determining by npp
+
+gvim() {
+	OLD_HOME="$HOME"
+	#OLD_VIMRUNTIME=$VIMRUNTIME
+	export HOME=/cygdrive/c/Users/theo/
+	# export HOME=/cygdrive/c/\!Portablez/gvim/gvim_9.1.0_x64_signed/vim
+	#export VIMRUNTIME="C:\Program Files (x86)\VIM\vim74"
+	if [ -z $1 ]; then
+		(/cygdrive/c/\!Portablez/gvim/gvim_9.1.0_x64_signed/vim/vim91/gvim.exe &)
+	else
+		TARGET=$(cygpath -w $(realpath "$1"))
+		echo $TARGET
+		(/cygdrive/c/\!Portablez/gvim/gvim_9.1.0_x64_signed/vim/vim91/gvim.exe "$TARGET" &)
+	fi
+	export HOME=$OLD_HOME
+	#export VIMRUNTIME=$OLD_VIMRUNTIME
+}
+

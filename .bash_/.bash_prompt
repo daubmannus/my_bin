@@ -1,0 +1,28 @@
+#!/bin/bash
+
+function setprompt() {
+	__PS1_title='\[\e]0;\h: \w\a\]\n'
+	
+	[ ! -z "$1" ] \
+		&& __PS1_title='\[\e]0;'"$1"'\a\]\n'
+	
+	__PS1_plane="$__PS1_title"'\[\e[32m\]\u@\h'
+	# __PS1_time='\[\e[33m\]\w\[\e[0m\] \[\e[30m\]\[\e[1m\]\D{%d.%m.%Y %T}\[\e[0m\]'
+	__PS1_time='\[\e[33m\]\w\[\e[0m\] \[\e[30m\]\[\e[1m\]\D{%Y-%m-%d %T}\[\e[0m\]'
+	__PS1_psign='\$ '
+	__PS1_shlvl='[$SHLVL]'
+
+	# custom prompt: time and date added
+	export PS1="$__PS1_plane $__PS1_time\n$__PS1_psign"
+
+	# if subshell, add to prompt
+	[[ $SHLVL > 1 ]] && \
+		export PS1="$__PS1_plane $__PS1_shlvl $__PS1_time\n$__PS1_psign"
+}
+
+function term-title() {
+	setprompt $1
+}
+
+setprompt
+
