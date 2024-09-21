@@ -1,3 +1,5 @@
+alias sudo='sudo '
+
 # Interactive operation...
 alias rm='rm -i'
 # cp: -d = --no-dereference --preserve=links
@@ -29,6 +31,10 @@ alias cx='chmod +x'
 
 alias e='vim'
 alias v='vim -M'
+
+alias r-sync='sudo rsync -avP --append --inplace'
+
+alias 2diff='diff -yW $(($(tput cols)-2))'
 
 alias wg++='PATH=/cygdrive/c/mingw/mingw64/bin/:''"'"$PATH"'"'' g++'
 
