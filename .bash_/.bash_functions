@@ -1,9 +1,9 @@
 #!/bin/bash
 # sorry for hashbang, it's just for correct language determining by npp
 
-# source functions for cygwin
-if [ -f "${HOME}/.bash_functions_cygwin" ]; then
-  source "${HOME}/.bash_functions_cygwin"
+# source functions for WSL
+if [ -f "${HOME}/.bash_functions_wsl" ]; then
+  source "${HOME}/.bash_functions_wsl"
 fi
 
 
@@ -110,6 +110,14 @@ factorpow() {
 		return 1
 	fi
 }
+
+ps-aux-grep() {
+	echo >&2; echo "ps aux | grep $@" >&2; echo >&2
+	ps aux | head -1; ps aux | grep $@ | grep -v grep
+	echo >&2
+}
+alias ps-grep='ps-aux-grep'
+
 
 
 # Some example functions:
