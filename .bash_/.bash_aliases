@@ -115,9 +115,6 @@ alias xterm='runx && DISPLAY=:0.0 xterm'
 
 
 # ad hoc
-alias ffmpeg='ffmpeg.exe'
-alias nmap="/cygdrive/c/Program\ Files\ \(x86\)/Nmap/nmap"
-alias rlab='. rlab'
 alias cal='cal -m'
 
 #alias cowsay-random='cowsay -f $(ls /usr/share/cowsay/cows/ | shuf -n1)'
@@ -148,3 +145,4 @@ alias wttr='curl -H "Accept-Language: uk" wttr.in/50.424972,30.648194?M wttr.in/
 alias wttr-='curl wttr.in/50.424972,30.648194?M'
 alias wttr-m='curl wttr.in/moon'
 
+alias npp='/mnt/c/\!Portablez/npp.8.6.9.portable.x64/notepad++.exe'
