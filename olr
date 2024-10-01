@@ -1,0 +1,31 @@
+#!/bin/bash
+
+#separator
+export SEP='  '
+
+#type suffixes
+export TSFX_file=''
+export TSFX_dir='/'
+export TSFX_symlink='>'
+export TSFX_blockdev='+'
+export TSFX_chardev='-'
+export TSFX_fifo='|'
+export TSFX_socket='='
+
+# only first arg to process
+ARG="$1"
+[ -z "$1" ] && ARG="."
+[ -d "$1" ] && cd "$1" && ARG='.'
+
+# MAIN
+find "$ARG" -mindepth 1 -type d -exec sh -c 'MTIME=$(stat "$1" --format=%y); printf "%s\n" "${1#./}$SEP[$TSFX_dir]$SEP$MTIME"' - {} \;
+find "$ARG" -type f -exec sh -c 'printf "%s" "${1#./}$SEP[$TSFX_file"; __md5=$(md5sum "$1" | cut -c1-32); stat --printf="$__md5.%s]$SEP%y\n" "$1"' - {} \;
+find "$ARG" -type l -exec sh -c 'printf "${1#./}$SEP[$TSFX_symlink"; readlink -n "$1"; echo "]"' - {} \;
+find "$ARG" -type b -exec sh -c 'printf "${1#./}$SEP[$TSFX_blockdev]\n"' - {} \;
+find "$ARG" -type c -exec sh -c 'printf "${1#./}$SEP[$TSFX_chardev]\n"' - {} \;
+find "$ARG" -type p -exec sh -c 'printf "${1#./}$SEP[$TSFX_fifo]\n"' - {} \;
+find "$ARG" -type s -exec sh -c 'printf "${1#./}$SEP[$TSFX_socket]\n"' - {} \;
+
+# to cut off mtime:
+# alias olr-t="sed 's/][^]].*$/]/'"
+# and | olr-t
