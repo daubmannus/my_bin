@@ -1,0 +1,64 @@
+#!/bin/bash
+
+#separator
+export SEP='  '
+
+#type suffixes
+export TSFX_file=''
+export TSFX_dir='/'
+export TSFX_symlink='>'
+export TSFX_blockdev='+'
+export TSFX_chardev='-'
+export TSFX_fifo='|'
+export TSFX_socket='='
+
+# dot as decimal separator
+export LC_NUMERIC=C
+
+# only first arg to process
+ARG="$1"
+[ -z "$1" ] && ARG="."
+[ -d "$1" ] && cd "$1" && ARG='.'
+
+__print_filename() {
+	echo -n "${1#./}" | tr $'\n' $'\r'
+	echo -n "$SEP[$2"
+}
+export -f __print_filename
+
+__print_mtime() {
+	echo -n "]$SEP"
+	stat "$1" --format="%y @%.Y" || echo "stat on: $1" >&2
+}
+export -f __print_mtime
+
+###############
+# MAIN
+###############
+
+# dirs
+find "$ARG" -mindepth 1 -type d -exec bash -c '\
+	__print_filename "$1" "$TSFX_dir"
+	__print_mtime "$1"
+	' - {} \;
+# files
+find "$ARG" -type f -exec bash -c '\
+	__print_filename "$1" "$TSFX_file"
+	__md5=$(md5sum "$1"); __md5=${__md5%% *}
+	stat --printf="${__md5#\\}.%s]$SEP%y @%.Y\n" "$1" || echo "stat(f) on: $1" >&2\
+	' - {} \;
+# symlinks
+find "$ARG" -type l -exec bash -c '\
+	__print_filename "$1" "$TSFX_symlink"
+	readlink -n "$1" || echo "readlink on: $1" >&2
+	__print_mtime "$1"
+	' - {} \;
+# block, char devices, fifo-pipes, sockets
+find "$ARG" -type b -exec bash -c '__print_filename "$1" "$TSFX_blockdev"; __print_mtime "$1"' - {} \;
+find "$ARG" -type c -exec bash -c '__print_filename "$1" "$TSFX_chardev"; __print_mtime "$1"' - {} \;
+find "$ARG" -type p -exec bash -c '__print_filename "$1" "$TSFX_fifo"; __print_mtime "$1"' - {} \;
+find "$ARG" -type s -exec bash -c '__print_filename "$1" "$TSFX_socket"; __print_mtime "$1"' - {} \;
+
+# to cut off mtime:
+# | sed 's/][^]].*$/]/'"
+
