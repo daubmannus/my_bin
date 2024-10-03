@@ -20,15 +20,45 @@ ARG="$1"
 [ -z "$1" ] && ARG="."
 [ -d "$1" ] && cd "$1" && ARG='.'
 
+__print_filename() {
+	echo -n "${1#./}" | tr $'\n' $'\r'
+	echo -n "$SEP[$2"
+}
+export -f __print_filename
+
+__print_mtime() {
+	echo -n "]$SEP"
+	stat "$1" --format="%y @%.Y" || echo "stat on: $1" >&2
+}
+export -f __print_mtime
+
+###############
 # MAIN
-find "$ARG" -mindepth 1 -type d -exec sh -c 'MTIME=$(stat "$1" --format="%y @%.Y"); printf "%s\n" "${1#./}$SEP[$TSFX_dir]$SEP$MTIME"' - {} \;
-find "$ARG" -type f -exec sh -c 'printf "%s" "${1#./}$SEP[$TSFX_file"; __md5=$(md5sum "$1" | cut -c1-32); stat --printf="$__md5.%s]$SEP%y @%.Y\n" "$1"' - {} \;
-find "$ARG" -type l -exec sh -c 'printf "${1#./}$SEP[$TSFX_symlink"; readlink -n "$1"; stat --printf="]$SEP%y @%.Y\n" "$1"' - {} \;
-find "$ARG" -type b -exec sh -c 'stat --printf "${1#./}$SEP[$TSFX_blockdev]$SEP%y @%.Y\n" "$1"' - {} \;
-find "$ARG" -type c -exec sh -c 'stat --printf "${1#./}$SEP[$TSFX_chardev]$SEP%y @%.Y\n" "$1"' - {} \;
-find "$ARG" -type p -exec sh -c 'stat --printf "${1#./}$SEP[$TSFX_fifo]$SEP%y @%.Y\n" "$1"' - {} \;
-find "$ARG" -type s -exec sh -c 'stat --printf "${1#./}$SEP[$TSFX_socket]$SEP%y @%.Y\n" "$1"' - {} \;
+###############
+
+# dirs
+find "$ARG" -mindepth 1 -type d -exec bash -c '\
+	__print_filename "$1" "$TSFX_dir"
+	__print_mtime "$1"
+	' - {} \;
+# files
+find "$ARG" -type f -exec bash -c '\
+	__print_filename "$1" "$TSFX_file"
+	__md5=$(md5sum "$1"); __md5=${__md5%% *}
+	stat --printf="${__md5#\\}.%s]$SEP%y @%.Y\n" "$1" || echo "stat(f) on: $1" >&2\
+	' - {} \;
+# symlinks
+find "$ARG" -type l -exec bash -c '\
+	__print_filename "$1" "$TSFX_symlink"
+	readlink -n "$1" || echo "readlink on: $1" >&2
+	__print_mtime "$1"
+	' - {} \;
+# block, char devices, fifo-pipes, sockets
+find "$ARG" -type b -exec bash -c '__print_filename "$1" "$TSFX_blockdev"; __print_mtime "$1"' - {} \;
+find "$ARG" -type c -exec bash -c '__print_filename "$1" "$TSFX_chardev"; __print_mtime "$1"' - {} \;
+find "$ARG" -type p -exec bash -c '__print_filename "$1" "$TSFX_fifo"; __print_mtime "$1"' - {} \;
+find "$ARG" -type s -exec bash -c '__print_filename "$1" "$TSFX_socket"; __print_mtime "$1"' - {} \;
 
 # to cut off mtime:
-# alias olr-t="sed 's/][^]].*$/]/'"
-# and | olr-t
+# | sed 's/][^]].*$/]/'"
+
