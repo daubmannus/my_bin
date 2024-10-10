@@ -118,6 +118,11 @@ ps-aux-grep() {
 }
 alias ps-grep='ps-aux-grep'
 
+ps-gen() {
+	ps uf -g $(ps -o sid= -p $1)
+}
+
+
 
 
 # Some example functions:
