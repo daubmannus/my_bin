@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# https://stackoverflow.com/questions/79144100/asterisk-glob-expansion-unexpected-behaviour-in-bash-on-wsls-9p-mounts
+
+# save true file number
+true_f_num=$(for fn in *; do echo; done | wc -l)
+
+while :; do
+	# count of iterations to outer loop pipe
+	echo
+	
+	# save current file list in file
+	echo -n '' >.list
+	
+	for fn in *; do
+		echo "$fn" >>.list
+	
+	# line below causes unexpected behaviour
+	# on 9P mounts (like /mnt/c/...)
+	# (WSL2, ubuntu 22.04)
+	done | cat > .tmp; rm .tmp
+	
+	# check 
+	[ $(cat .list | wc -l ) -ne $true_f_num ] && break
+
+done | wc -l
