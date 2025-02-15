@@ -1,0 +1,34 @@
+#!/bin/bash
+# md5 list to output
+
+__tmp_err_fn=/tmp/.md5l.err.$$
+
+say_err() {
+	if [ -s "$__tmp_err_fn" ]; then
+		echo "$1" >&2
+		pwd >&2
+		cat "$__tmp_err_fn" >&2
+		rm "$__tmp_err_fn"
+	fi
+}
+
+if [ -z "$1" ]; then set -- "."; fi
+for __param in "$@"
+do
+	#printf "%s" "$__param" >&2
+	cd "$__param"
+	for __name in *
+	do
+		if [ ! "$__name" = '*' ] \
+			&& [ ! -d "$__name" ] \
+			&& [ ! -h "$__name" ]
+		then
+			md5sum -b -- "$__name" | tr '*' ' ' 2>"$__tmp_err_fn"
+			# checksums on digital preservation: the binary mode is the standard.
+			
+			[ -f "$__tmp_err_fn" ] \
+				&& say_err "ERROR: $__name" 
+		fi
+	done \
+	| sort 
+done
