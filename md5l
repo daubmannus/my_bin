@@ -40,8 +40,7 @@ do
 	for __name in *
 	do
 		if [ ! "$__name" = '*' ] \
-			&& [ ! -d "$__name" ] \
-			&& [ ! -h "$__name" ]
+			&& [ -f "$__name" ]
 		then
 			# echo "$__name" >> "$__tmp_fn"
 			md5sum -b -- "$__name" | tr '*' ' ' 2>"$__tmp_err_fn"
