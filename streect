@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# only first arg to process
+[ -z "$1" ] && ARG="."
+ARG=$(dirname "$1")
+[ -d "$1" ] && cd "$1"
+
+###############
+# MAIN
+###############
+
+find "$ARG" -mindepth 1 | cut -c 3- \
+	| LC_ALL=C sort 
