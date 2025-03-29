@@ -122,8 +122,26 @@ ps-gen() {
 	ps uf -g $(ps -o sid= -p $1)
 }
 
-
-
+date-diff() {
+	[ -z "$2" ] && echo 'parameter(s) missing' >&2 && return 1
+	[[ "$1" =~ ^\d\d:\d\d:\d\d$ ]] && [[ "$2" =~ ^\d\d:\d\d:\d\d$ ]] \
+		&& set -- "1970-01-01 $1" "1970-01-01 $2"
+	# diff in seconds
+	__sec=$(($(date -d"$1" +%s)-$(date -d"$2" +%s)))
+	# date -d@1 +'%Y-%m-%d %H:%M:%S'
+	printf "%d\t" $__sec
+	[ $__sec -lt 0 ] && __sign='-' && __sec=$((-__sec))
+	# days
+	[ -v $__sign ] || echo -n $__sign
+	printf "%i days " $(($__sec/86400)); __sec=$(($__sec%86400))
+	[ -v $__sign ] || echo -n $__sign
+	# hours
+	printf "%02i:" $(($__sec/3600)); __sec=$(($__sec%3600))
+	# min
+	printf "%02i:" $(($__sec/60)); __sec=$(($__sec%60))
+	# sec
+	printf "%02i\n" $__sec
+}
 
 # Some example functions:
 #
