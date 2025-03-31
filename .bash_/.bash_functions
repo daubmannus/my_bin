@@ -127,16 +127,14 @@ date-diff() {
 	[[ "$1" =~ ^\d\d:\d\d:\d\d$ ]] && [[ "$2" =~ ^\d\d:\d\d:\d\d$ ]] \
 		&& set -- "1970-01-01 $1" "1970-01-01 $2"
 	# diff in seconds
-	__sec=$(($(date -d"$1" +%s)-$(date -d"$2" +%s)))
+	__sec=$(($(date -d"$2" +%s)-$(date -d"$1" +%s)))
 	# date -d@1 +'%Y-%m-%d %H:%M:%S'
 	printf "%d\t" $__sec
-	[ $__sec -lt 0 ] && __sign='-' && __sec=$((-__sec))
+	__sign=''; [ $__sec -lt 0 ] && __sign='-' && __sec=$((-__sec))
 	# days
-	[ -v $__sign ] || echo -n $__sign
-	printf "%i days " $(($__sec/86400)); __sec=$(($__sec%86400))
-	[ -v $__sign ] || echo -n $__sign
+	printf "%s%i days " "$__sign" $(($__sec/86400)); __sec=$(($__sec%86400))
 	# hours
-	printf "%02i:" $(($__sec/3600)); __sec=$(($__sec%3600))
+	printf "%s%02i:" "$__sign" $(($__sec/3600)); __sec=$(($__sec%3600))
 	# min
 	printf "%02i:" $(($__sec/60)); __sec=$(($__sec%60))
 	# sec
