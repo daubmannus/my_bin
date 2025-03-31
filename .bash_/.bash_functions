@@ -124,17 +124,22 @@ ps-gen() {
 
 date-diff() {
 	[ -z "$2" ] && echo 'parameter(s) missing' >&2 && return 1
+	[ ! -z "$3" ] && echo 'more than two parameters' >&2 && return 2
 	[[ "$1" =~ ^\d\d:\d\d:\d\d$ ]] && [[ "$2" =~ ^\d\d:\d\d:\d\d$ ]] \
 		&& set -- "1970-01-01 $1" "1970-01-01 $2"
 	# diff in seconds
 	__sec=$(($(date -d"$2" +%s)-$(date -d"$1" +%s)))
 	# date -d@1 +'%Y-%m-%d %H:%M:%S'
-	printf "%d\t" $__sec
+	printf "%d s = " $__sec
 	__sign=''; [ $__sec -lt 0 ] && __sign='-' && __sec=$((-__sec))
+	# years (365 days)
+	[ $(($__sec/31536000)) -gt 0 ] \
+	&& printf "%s%i years " "$__sign" $(($__sec/31536000)); __sec=$(($__sec%31536000))
 	# days
-	printf "%s%i days " "$__sign" $(($__sec/86400)); __sec=$(($__sec%86400))
+	[ $(($__sec/86400)) -gt 0 ] \
+	&& printf "%s%i days " "$__sign" $(($__sec/86400)); __sec=$(($__sec%86400))
 	# hours
-	printf "%s%02i:" "$__sign" $(($__sec/3600)); __sec=$(($__sec%3600))
+	printf "%s%i:" "$__sign" $(($__sec/3600)); __sec=$(($__sec%3600))
 	# min
 	printf "%02i:" $(($__sec/60)); __sec=$(($__sec%60))
 	# sec
