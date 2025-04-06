@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# md5sum and size in bytes of regular file
+# sepatated with dot (.), endline (\n)
+
+for __arg in "$@"; do 
+	[ ! -f "$__arg" ] && echo -e "md5s ($__arg): not a file" >&2 && continue
+	# echo -en "$__arg\t"
+	__md5=$(md5sum -b -- "$__arg"); __md5=${__md5%% *}
+	stat --printf="${__md5#\\}.%s\n" "$__arg" || echo "stat(f) on: $__arg" >&2
+done
