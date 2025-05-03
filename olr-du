@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# summ of file sizes in olr(s)
+# input as args or stdin
+# depends on hibi
+
+[ -z "$1" ] && [[ -p /dev/stdin ]] && set -- '-'
+
+echo "${@}" 
+cat "${@}" \
+    | grep -aP '\[[\da-f]{32}\.\d+\]' \
+    | perl -pe 's/^.+\[[\da-f]{32}\.(\d+)\][^]]+$/$1\n/' \
+    | awk '{s+=$1} END {print s}' \
+    | hibi
+
