@@ -32,7 +32,11 @@ alias cx='chmod +x'
 alias e='vim'
 alias v='vim -M'
 
-alias r-sync='sudo rsync -avP --append --inplace'
+alias llblk='lsblk -o name,mountpoint,label,size,fstype,uuid'
+
+alias r-sync='rsync -avP --append --inplace 2> >(tee -a /tmp/r-sync.$(date +%s).err >&2)'
+
+alias md5sum='md5sum -b'
 
 alias 2diff='diff -yW $(($(tput cols)-2))'
 
@@ -49,18 +53,18 @@ alias basic='bwbasic'
 alias bas='bwbasic'
 
 alias md='mkdir'
-alias ren='prename'
+#alias ren='prename'
 alias bkp='bkp.sh'
 alias bkp-v='bkp-v.sh'
 alias cd-up='. cd-up' # cd to parent dir of symlink's target
 alias cd-to='. cd-to' # cd to THE dir of symlink's target 
-alias md5='md5deep -r'
+#alias md5='md5deep -r'
 alias bcf='bc -l ~/.config/bcrc'
 alias googler='BROWSER=links googler -n 5'
-alias gclip_pwd='p="$(cygpath -w "$(pwd)")"; printf "%s" "${p%\\n}" | gclip'
-alias gpwd='gclip_pwd'
-alias ppwd='cygpath -m "$(pclip | perl -pe '"'"'s/^[\s]*"(.*)"[\s]*$/$1/'"'"')"'
-alias pclip_cd='cd "$(ppwd)"'
+#alias gclip_pwd='p="$(cygpath -w "$(pwd)")"; printf "%s" "${p%\\n}" | gclip'
+#alias gpwd='gclip_pwd'
+#alias ppwd='cygpath -m "$(pclip | perl -pe '"'"'s/^[\s]*"(.*)"[\s]*$/$1/'"'"')"'
+#alias pclip_cd='cd "$(ppwd)"'
 
 # to highlight source
 # (first apt-cyg install source-highlight)
@@ -72,32 +76,32 @@ alias cat_="pygmentize -f terminal256 -O style=native -g"
 
 
 # to run GUI applications
-alias chrome='cygstart chrome'
-alias firefox='cygstart firefox'
+#alias chrome='cygstart chrome'
+#alias firefox='cygstart firefox'
 
 # ssh
-alias ssh-nr='ssh root@192.168.1.200'
-alias ssh-urs='ssh theo@192.168.1.220'
-alias ssh-ganka='ssh ganka@192.168.1.147'
-alias ssh-mimi='ssh theo@192.168.1.105'
-alias ssh-nr-out='ssh ssh://root@212.80.57.11:200'
-alias ssh-urs-out='ssh ssh://theo@212.80.57.11:220'
-alias ssh-p='ssh pi@192.168.1.121'
-alias ssh-rl='ssh vagrant@192.168.10.10'
-alias ssh-tlx='ssh theo@192.168.1.135'
-alias ssh-sp='ssh ssh://evg@92.244.99.142:22222'
-
-alias ssh-nr-out='ssh root@212.80.57.11 -p 200'
+#alias ssh-nr='ssh root@192.168.1.200'
+#alias ssh-urs='ssh theo@192.168.1.220'
+#alias ssh-ganka='ssh ganka@192.168.1.147'
+#alias ssh-mimi='ssh theo@192.168.1.105'
+#alias ssh-nr-out='ssh ssh://root@212.80.57.11:200'
+#alias ssh-urs-out='ssh ssh://theo@212.80.57.11:220'
+#alias ssh-p='ssh pi@192.168.1.121'
+#alias ssh-rl='ssh vagrant@192.168.10.10'
+#alias ssh-tlx='ssh theo@192.168.1.135'
+#alias ssh-sp='ssh ssh://evg@92.244.99.142:22222'
+#
+#alias ssh-nr-out='ssh root@212.80.57.11 -p 200'
 
 #alias ssh-ora='ssh -F ~/.ssh/conf_ora -i ~/.ssh/keys/ssh-key-2022-05-25_oracle_daubmannus.key ubuntu@141.144.194.208'
 #alias ssh-ora='ssh -F ~/.ssh/conf_ora -i ~/.ssh/keys/ssh-key-2022-03-01_oracle_daubmannus.key ubuntu@150.230.20.188'
 
 # apache / httpd
 
-alias httpd-start='/usr/sbin/httpd'
-alias httpd-stop='kill -TERM `cat /var/run/httpd/httpd.pid`'
-alias httpd-restart='kill -HUP `cat /var/run/httpd/httpd.pid`'
-alias httpd-log='less /var/log/httpd/error_log'
+#alias httpd-start='/usr/sbin/httpd'
+#alias httpd-stop='kill -TERM `cat /var/run/httpd/httpd.pid`'
+#alias httpd-restart='kill -HUP `cat /var/run/httpd/httpd.pid`'
+#alias httpd-log='less /var/log/httpd/error_log'
 
 
 # gvim
@@ -130,14 +134,14 @@ alias cowsay-random='cowsay -f $(ls /usr/local/share/cows/ | shuf -n1)'
 
 alias wol='wol --cygwin'
 
-alias mpv='/cygdrive/c/!Portablez/mpv/mpv-x86_64-20200621-git-dc24a43/mpv.exe'
+#alias mpv='/cygdrive/c/!Portablez/mpv/mpv-x86_64-20200621-git-dc24a43/mpv.exe'
 #alias ytdl='youtube-dl'
 alias ytdl='yt-dlp'
 alias ytdl-srt='yt-dlp --skip-download --write-sub --write-auto-sub --sub-lang en --convert-subs srt'
 
-alias gs='/cygdrive/c/Program\ Files/gs/gs9.56.1/bin/gswin64c -sFONTPATH="$WINDIR"/fonts -dEmbedAllFonts=true '
+#alias gs='/cygdrive/c/Program\ Files/gs/gs9.56.1/bin/gswin64c -sFONTPATH="$WINDIR"/fonts -dEmbedAllFonts=true '
 
-alias VBoxManage='/cygdrive/c/Program\ Files/Oracle/VirtualBox/VBoxManage.exe'
+#alias VBoxManage='/cygdrive/c/Program\ Files/Oracle/VirtualBox/VBoxManage.exe'
 
 alias 2iB='numfmt --to=iec-i --suffix=B --format="%9.2f"'
 
