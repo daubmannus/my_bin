@@ -4,12 +4,28 @@
 # input as args or stdin
 # depends on hibi
 
+shopt -s lastpipe
+# make the last part of the pipeline run in the current environment (so, in new subshell)
+
 [ -z "$1" ] && [[ -p /dev/stdin ]] && set -- '-'
 
-echo "${@}" 
-cat "${@}" \
-    | grep -aP '\[[\da-f]{32}\.\d+\]' \
-    | perl -pe 's/^.+\[[\da-f]{32}\.(\d+)\][^]]+$/$1\n/' \
-    | awk '{s+=$1} END {print s}' \
-    | hibi
+olr_sum_total=0
+iterations=0
+for fn in "$@"; do 
+	echo "$fn" 
+	cat "$fn" \
+		| grep -aP '\[[\da-f]{32}\.\d+\]' \
+		| perl -pe 's/^.+\[[\da-f]{32}\.(\d+)\][^]]+$/$1\n/' \
+		| awk '{s+=$1} END {print s}' \
+		| hibi \
+		| read output # works with 'shopt -s lastpipe'
+	echo "$output"
+	olr_sum_total=$(( olr_sum_total + $(echo "$output" | cut -f1 -d' ') ))
+	((++iterations))
+done
+[ $iterations -gt 1 ] \
+	&& {
+		echo '== TOTAL'
+		hibi $olr_sum_total
+	}
 
