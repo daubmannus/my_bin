@@ -12,20 +12,18 @@ shopt -s lastpipe
 olr_sum_total=0
 iterations=0
 for fn in "$@"; do 
-	echo "$fn" 
 	cat "$fn" \
 		| grep -aP '\[[\da-f]{32}\.\d+\]' \
 		| perl -pe 's/^.+\[[\da-f]{32}\.(\d+)\][^]]+$/$1\n/' \
 		| awk '{s+=$1} END {print s}' \
 		| hibi \
 		| read output # works with 'shopt -s lastpipe'
-	echo "$output"
+	echo -e "$output\t$fn"
 	olr_sum_total=$(( olr_sum_total + $(echo "$output" | cut -f1 -d' ') ))
 	((++iterations))
 done
 [ $iterations -gt 1 ] \
 	&& {
-		echo '== TOTAL'
-		hibi $olr_sum_total
+		olr_sum_total_hibi="$(hibi $olr_sum_total)"
+		echo -e "$olr_sum_total_hibi\t== TOTAL"
 	}
-
