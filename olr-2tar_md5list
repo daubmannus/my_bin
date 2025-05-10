@@ -3,9 +3,11 @@
 # converts file strings from olr(s) to tar_md5list
 # grep is the same as in olr-files
 # input as args or stdin
+SEP='  '
 
 [ -z "$1" ] && [[ -p /dev/stdin ]] && set -- '-'
 
 cat "$@" \
 	| grep -aP '\[[\da-fA-F]{32}\.\d+\][^]]*$' \
-	| perl -pe 's/^(.+)\[([\da-f]{32}).\d+\][^]]*$/$2 $1\n/'
+	| perl -pe 's/^(.+)'"$SEP"'\[([\da-f]{32}).\d+\][^]]*$/$2 $1\n/'
+
