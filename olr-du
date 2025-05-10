@@ -13,7 +13,7 @@ olr_sum_total=0
 iterations=0
 for fn in "$@"; do 
 	cat "$fn" \
-		| grep -aP '\[[\da-f]{32}\.\d+\]' \
+		| grep -aP '\[[\da-fA-F]{32}\.\d+\][^]]*$' \
 		| perl -pe 's/^.+\[[\da-f]{32}\.(\d+)\][^]]+$/$1\n/' \
 		| awk '{s+=$1} END {print s}' \
 		| hibi \
