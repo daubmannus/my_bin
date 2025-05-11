@@ -37,7 +37,8 @@ do
 	printf "%s" "$__param"
 	cd "$__param"
 	[ -f .md5.err ] && mv .md5.err .md5.err.bkp_"$(stat -c %Y .md5.err)"-"$(date +%s)"~
-	for __name in *
+	# for __name in *
+	while IFS= read -r __name
 	do
 		if [ ! "$__name" = '*' ] \
 			&& [ -f "$__name" ]
@@ -49,7 +50,8 @@ do
 			[ -f "$__tmp_err_fn" ] \
 				&& say_err "$__name" 
 		fi
-	done \
+	# done \
+	done < <( ls -1 | sort | uniq ) \
 	| sort > "$__tmp_fn"
 	if [ -s "$__tmp_fn" ]
 	then
