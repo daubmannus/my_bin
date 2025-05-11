@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# find files with duplicate strings
+# input as args
+
+[ -z "$1" ] && set -- "."
+
+__hasdups() {
+	lines=$(wc -l "$1" | cut -f1 -d' ')
+	lines_uniq=$(sort "$1" | uniq | wc -l | cut -f1 -d' ')
+	[ $lines -ne $lines_uniq ] && return 0
+	return 1
+}
+export -f __hasdups
+
+for fn in "$@"; do
+	find "$fn" -type f -exec bash -c '\
+		__hasdups "$1" && echo "$1"
+	' - {} \;
+done
