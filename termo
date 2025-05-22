@@ -1,0 +1,5 @@
+#!/bin/bash -v
+
+sensors
+# hddtemp /dev/sda  # obsolete
+# for i in a c d e f; do sudo smartctl -A /dev/sd$i | grep Temperature_Celsius | awk '{print $10}'; done
