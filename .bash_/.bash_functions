@@ -84,6 +84,26 @@ unshft() {
 	arr=("${@: 1: $(($#-1))}" "${arr[@]}")
 }
 
+ord() { 
+	printf "%d" "\"$1"
+}
+chr() {
+    printf "\x$(printf "%x" "$1")"
+}
+
+# non-ascii chars in string to hex codes
+ordstr() {
+	while read -n1 c; do
+		x=$(ord $c)
+		if [ $x -gt 127 ]; then
+			printf "%s%X" '\x' $x
+		elif [ $x -eq 0 ]; then
+			echo
+		else
+			echo -ne $c
+		fi
+	done < <(echo -n "$1")
+}
 
 factorpow() {
 	if [[ "$1" =~ ^[0-9]+$ ]]; then
