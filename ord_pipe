@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# non-ascii chars in pipe to hex codes
+
+ord() { 
+	printf "%d" "\"$1"
+}
+
+set -- '-'
+for fn in "$@"; do
+	while IFS= read -r line; do
+		while read -n1 c; do
+			x=$(ord $c)
+			if [ $x -gt 127 ]; then
+				printf "%s%X" '\x' $x
+			else
+				echo -ne $c
+			fi
+		done < <(echo "$line")
+		echo
+	done < <(cat "$fn")
+done
