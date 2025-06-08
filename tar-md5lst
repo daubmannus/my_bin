@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# md5sum from tar file
+
+#separator
+export SEP='  '
+
+for fn in "$@"; do 
+	tar -ixf "$fn" --to-command 'echo "$(md5sum | cut -d\  -f 1)$SEP$TAR_FILENAME"' >"$fn".md5lst
+done
