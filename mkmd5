@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# md5sum from files and create filename.md5
+
+for fn in "$@"; do 
+	md5sum "$fn" >"$fn".md5
+done
