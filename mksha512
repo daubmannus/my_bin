@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# sha512sum from files and create filename.sha512
+
+for fn in "$@"; do 
+	sha512sum "$fn" >"$fn".sha512
+done
