@@ -1,9 +1,10 @@
 #!/bin/bash
 # git cherry-pick commit to another branch, push there and return
+# --last option avaliable for last commit instead of commit-sha
 
 display_help() {
 	echo "\
-Usage: git-cp <commit-sha> [target_branch]
+Usage: git-cp <commit-sha|--last> [target_branch]
   default target branch is 'master'\
 " >&2
 	exit 0
@@ -25,6 +26,9 @@ __current_branch=$(git rev-parse --abbrev-ref HEAD)
 # branch is not equal to current
 [[ "$__branch" == "$__current_branch" ]] && fail "Both branches are the same ($__branch)" 3
 echo "Current branch: $__current_branch"
+
+# --last
+[[ "$__commit" == '--last' ]] && __commit=$(git rev-parse --short HEAD) && echo "Using last commit: $__commit"
 
 # check if commit exists
 $(git cat-file -e "$__commit"^{commit} 2>/dev/null) || fail "Invalid commit-sha ($__commit)" 1
