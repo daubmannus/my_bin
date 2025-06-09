@@ -1,0 +1,63 @@
+#!/bin/bash
+# git cherry-pick commit to another branch, push there and return
+
+display_help() {
+	echo "\
+Usage: git-cp <commit-sha> [target_branch]
+  default target branch is 'master'\
+" >&2
+	exit 0
+}
+
+fail() {
+	echo "git-cp: $1" >&2
+	exit $2
+}
+
+[ -z $1 ] && display_help; __commit="$1"
+
+__branch="$2"; [ -z $__branch ] && __branch='master'
+
+# current branch
+__current_branch=$(git rev-parse --abbrev-ref HEAD) 
+[ -z $__current_branch ] && fail "failed" 127
+
+# branch is not equal to current
+[[ "$__branch" == "$__current_branch" ]] && fail "Both branches are the same ($__branch)" 3
+echo "Current branch: $__current_branch"
+
+# check if commit exists
+$(git cat-file -e "$__commit"^{commit} 2>/dev/null) || fail "Invalid commit-sha ($__commit)" 1
+echo "Commit hash: $__commit"
+
+# branch exists
+[[ $(git branch --list "$__branch") ]] || fail "Invalid target branch ($__branch)" 2
+
+echo "Target branch: $__branch"
+echo 
+
+# main
+
+echo =============================
+echo git checkout "$__branch"
+echo -----------------------------
+git checkout "$__branch"
+
+echo =============================
+echo git cherry-pick "$__commit"
+echo -----------------------------
+git cherry-pick "$__commit"
+
+echo =============================
+echo git push
+echo -----------------------------
+git push
+
+echo =============================
+echo git checkout "$__current_branch"
+echo -----------------------------
+git checkout "$__current_branch"
+
+echo 
+echo =============================
+echo "Don't forget to do 'git push' in current branch."
