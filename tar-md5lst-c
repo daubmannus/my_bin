@@ -1,0 +1,8 @@
+#!/bin/bash
+# md5sum from tar file in stdin, to stdout
+# e.g.: cat file.tar | tar-md5lst-c
+
+#separator
+export SEP='  '
+
+tar -ix --to-command 'echo "$(md5sum | cut -d\  -f 1)$SEP$TAR_FILENAME"'
