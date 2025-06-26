@@ -1,0 +1,75 @@
+#!/bin/bash
+
+list2cp=(
+	bkp
+	cd-to
+	git-cp
+	hibi
+	md5l
+	md5lr
+	mkmd5
+	mksha256
+	mksha512
+	olr
+	olrs
+	termo
+	wol
+)
+
+trg=/usr/local/bin
+bkp_lst_fn=.bin.ls.bkp
+lst_fn=.bin.ls.add
+
+err_msg() {
+	echo "$@" >&2
+}
+err_exit() {
+	err_msg "${@:1:$(($#-1))}"
+	exit ${@: -1}
+}
+
+[[ $EUID -ne 0 ]] \
+	&& err_exit "error: the script must be run as root" 1
+
+for fn in ${list2cp[@]}; do
+	[ -f "$fn" ] \
+		|| err_exit "error: missing file $fn (wrong directory?)" 2
+done
+
+
+if [ -f $trg/$bkp_lst_fn ]; then 
+	./bkp $trg/$bkp_lst_fn \
+		|| err_exit "error bkp $trg/$bkp_lst_fn" 3
+fi
+
+( 
+	echo
+	echo ==========================================
+	date +'%Y-%m-%d %H:%M:%S %z'
+	echo ==========================================
+	echo "  linking $(pwd)/... -> $trg/..."
+	
+) | tee -a $trg/$lst_fn \
+		|| err_exit "error logging $trg/$bkp_lst_fn" 4
+
+ls -ls -1 $trg | tee $trg/$bkp_lst_fn 1>/dev/null\
+		|| err_exit "error writing list $trg/$bkp_lst_fn" 5
+
+# echo ${list2cp[@]}
+
+for fn in ${list2cp[@]}; do
+	if [ -f "$fn" ]
+	then
+		if ln -s "$(pwd)"/"$fn" $trg/"$fn"
+		then
+			echo "$fn" | tee -a $trg/$lst_fn \
+				|| err_exit "error logging $trg/$bkp_lst_fn" 5
+		else
+			echo 'error linking '"$(pwd)"/"$fn"' -> '"$trg"/"$fn" >> $trg/$lst_fn
+		fi
+	else
+		echo "error: missing file $fn" >> $trg/$lst_fn
+	fi
+done
+
+exit 0
