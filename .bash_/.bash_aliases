@@ -54,7 +54,7 @@ alias bas='bwbasic'
 
 alias md='mkdir'
 #alias ren='prename'
-alias bkp='bkp.sh'
+#alias bkp='bkp.sh'
 alias bkp-v='bkp-v.sh'
 alias cd-up='. cd-up' # cd to parent dir of symlink's target
 alias cd-to='. cd-to' # cd to THE dir of symlink's target 
