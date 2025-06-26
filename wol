@@ -22,35 +22,42 @@ __not_cygwin='-b'
 # fail if file not found
 [ ! -f $CONFIG_FN ] && echo wol: missing config file \"$CONFIG_FN\" >&2 && exit 2
 
-echo I\'ll try to wake \""$1"\".
+wake() {
+	echo
+	echo I\'ll try to wake \""$1"\".
 
-# find the name, strip multiple spaces, 
-line="$( grep -P "^\s*$1" $CONFIG_FN | tr -s ' ' )"
-# fail if name not found
-[[ $line == '' ]] && echo "wol: name \"$1\" not found in \"$CONFIG_FN\"." >&2 && show_help
-# remove first space
-[[ "${line:0:1}" == ' ' ]] && line="${line:1}"
+	# find the name, strip multiple spaces, 
+	line="$( grep -P "^\s*$1" $CONFIG_FN | tr -s ' ' )"
+	# fail if name not found
+	[[ $line == '' ]] && echo "wol: name \"$1\" not found in \"$CONFIG_FN\"." >&2 && show_help
+	# remove first space
+	[[ "${line:0:1}" == ' ' ]] && line="${line:1}"
 
-# echo "$line"
-# split string to variables
-IFS=' ' read -r NAME MAC BROADCAST PORT <<< "$line" 
+	# echo "$line"
+	# split string to variables
+	IFS=' ' read -r NAME MAC BROADCAST PORT <<< "$line" 
 
-echo found in \"$CONFIG_FN\":
-echo NAME: \"$NAME\"
-echo MAC: \"$MAC\"
-echo BROADCAST: \"$BROADCAST\"
-echo PORT: \"$PORT\"
-echo
-printf ...
+	echo found in \"$CONFIG_FN\":
+	echo NAME: \"$NAME\"
+	echo MAC: \"$MAC\"
+	echo BROADCAST: \"$BROADCAST\"
+	echo PORT: \"$PORT\"
+	echo
+	printf ...
 
-# The WOL magic packet is composed of 
-# ffffffffffff (12 times f) 
-# followed by 16 times the destination MAC without colons (:).
+	# The WOL magic packet is composed of 
+	# ffffffffffff (12 times f) 
+	# followed by 16 times the destination MAC without colons (:).
 
-# The sed command is used here to remove separators (-) from the MAC 
-# and to add the \x hex specificator.
+	# The sed command is used here to remove separators (-) from the MAC 
+	# and to add the \x hex specificator.
 
-echo -e $(echo $(printf 'f%.0s' {1..12}; printf "$(echo $MAC | sed 's/-//g')%.0s" {1..16}) | sed -e 's/../\\x&/g') \
-| nc -w1 -u $__not_cygwin "$BROADCAST" "$PORT"
+	echo -e $(echo $(printf 'f%.0s' {1..12}; printf "$(echo $MAC | sed 's/-//g')%.0s" {1..16}) | sed -e 's/../\\x&/g') \
+	| nc -w1 -u $__not_cygwin "$BROADCAST" "$PORT"
 
-echo magic packets sent.
+	echo magic packets sent.
+}
+
+for PARAM in "$@"; do
+        wake "$PARAM"
+done
