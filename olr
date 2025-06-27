@@ -44,7 +44,8 @@ find "$ARG" -mindepth 1 -type d -exec bash -c '\
 # files
 find "$ARG" -type f -exec bash -c '\
 	__print_filename "$1" "$TSFX_file"
-	__md5=$(md5sum "$1"); __md5=${__md5%% *}
+	__md5=$(md5sum -b -- "$1"); __md5=${__md5%% *}
+	# checksums on digital preservation: the binary mode is the standard.
 	stat --printf="${__md5#\\}.%s]$SEP%y @%.Y\n" "$1" || echo "stat(f) on: $1" >&2\
 	' - {} \;
 # symlinks

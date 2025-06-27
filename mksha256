@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# sha256sum from files and create filename.sha256
+
+for fn in "$@"; do 
+	sha256sum "$fn" >"$fn".sha256
+done

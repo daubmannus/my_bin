@@ -1,11 +1,12 @@
 #!/bin/bash
 # md5 list 
 
+__tmp_fn='/tmp/.md5l.tmp.'$(uuidgen)
 __tmp_err_fn='/tmp/.md5l.err.'$(uuidgen)
 __err_fn='.md5.err'
 
 pass_by() {
-	rm .md5.tmp
+	rm "$__tmp_fn"
 	printf "\033[2K\r"
 }
 say_err() {
@@ -36,35 +37,36 @@ do
 	printf "%s" "$__param"
 	cd "$__param"
 	[ -f .md5.err ] && mv .md5.err .md5.err.bkp_"$(stat -c %Y .md5.err)"-"$(date +%s)"~
-	for __name in *
+	# for __name in *
+	while IFS= read -r __name
 	do
 		if [ ! "$__name" = '*' ] \
-			&& [ ! -d "$__name" ] \
-			&& [ ! -h "$__name" ]
+			&& [ -f "$__name" ]
 		then
-			# echo "$__name" >> .tmp
+			# echo "$__name" >> "$__tmp_fn"
 			md5sum -b -- "$__name" | tr '*' ' ' 2>"$__tmp_err_fn"
 			# checksums on digital preservation: the binary mode is the standard.
 			
 			[ -f "$__tmp_err_fn" ] \
 				&& say_err "$__name" 
 		fi
-	done \
-	| sort > .md5.tmp
-	if [ -s .md5.tmp ]
+	# done \
+	done < <( ls -1 | sort | uniq ) \
+	| sort > "$__tmp_fn"
+	if [ -s "$__tmp_fn" ]
 	then
 		if [ -f .md5 ] 
 		then 
-			__diff="$( diff .md5 .md5.tmp )"
+			__diff="$( diff .md5 "$__tmp_fn" )"
 			if [ -z "$__diff" ]
 			then
 				pass_by
 			else
 				mv .md5 .md5.bkp_"$(stat -c %Y .md5)"-"$(date +%s)"~ \
-				&& mv .md5.tmp .md5
+				&& mv "$__tmp_fn" .md5
 			fi
 		else
-			mv .md5.tmp .md5
+			mv "$__tmp_fn" .md5
 			echo
 		fi
 	else
