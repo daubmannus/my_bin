@@ -3,8 +3,14 @@
 # check if hashes in all files *.md5 are in directory's .md5
 # throw error message on that is not
 
-for fn in ?*.md5; do 
-	__md5=$(cat $fn)
-	grep $__md5 .md5 1>/dev/null \
-	|| echo "ERROR: $fn: $__md5" >2
+for fn in ?*.md5; do
+    __md5_str=$(cat $fn)
+    __md5=${__md5_str%%\ *}
+    grep -F -- "$__md5_str" .md5 1>/dev/null \
+    || {
+        echo -e "$fn:\n    $__md5_str" >&2
+        echo -ne "  in .md5:\n    " >&2
+        grep $__md5 .md5 >&2 \
+        || echo '-- HASH MISSING --'
+    }
 done
