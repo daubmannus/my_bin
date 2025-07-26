@@ -5,6 +5,6 @@
 
 for fn in ?*.md5; do 
 	__md5=$(cat $fn)
-	grep $md5 .md5 1>/dev/null \
-	|| echo "ERROR: $fn: $o" >2
+	grep $__md5 .md5 1>/dev/null \
+	|| echo "ERROR: $fn: $__md5" >2
 done
