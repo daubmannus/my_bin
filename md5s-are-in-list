@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# check if hashes in all files *.md5 are in directory's .md5
+# throw error message on that is not
+
+for fn in ?*.md5; do 
+	__md5=$(cat $fn)
+	grep $md5 .md5 1>/dev/null \
+	|| echo "ERROR: $fn: $o" >2
+done
