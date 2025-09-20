@@ -1,0 +1,2 @@
+sudo mount -t cifs //192.168.0.102/transfer /mnt/spws/transfer -o username=Admin,rw,iocharset=utf8
+sudo mount -t cifs //192.168.0.102/work /mnt/spws/work -o username=Admin,ro,iocharset=utf8
