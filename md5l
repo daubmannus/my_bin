@@ -52,7 +52,7 @@ do
 		fi
 	# done \
 	done < <( ls -1 | sort | uniq ) \
-	| sort > "$__tmp_fn"
+	| LC_ALL=C sort > "$__tmp_fn"
 	if [ -s "$__tmp_fn" ]
 	then
 		if [ -f .md5 ] 
