@@ -1,0 +1,11 @@
+#!/bin/bash
+
+for fn in *; do
+	# dirs only
+	if [ -d "$fn" ]; then
+		fn_ascii="$(echo $fn | perl -pe 's/[^[:ascii:]]+/_/g')"
+		[ "$fn" != "$fn_ascii" ] \
+		&& mv "$fn" "$fn_ascii" \
+		&& echo "$fn"
+	fi
+done
