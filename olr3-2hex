@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# convert olr3 to binary representation line by line
+# input via files or stdin
+# output to stdout
+
+# function to convert binary string to hex string
+binstr2hexstr() {
+	local binstr="$1"
+	local len=${#binstr}
+	local pad=$(( (4 - (len % 4)) % 4 ))
+	local zeros=$(printf '%*s' "$pad" '' | tr ' ' 0)
+	printf '%s\n' "$zeros$binstr" | fold -w4 \
+	| while read -r n; do printf "%x" "$((2#$n))"; done 
+}
+
+[ -z "$1" ] && [[ -p /dev/stdin ]] && set -- '-'
+for fn in "$@"; do 
+	while IFS= read -r line; do
+		# save binary string
+		binstr=$(echo "$line" | perl -pe 's/^.+?([()]+)$/$1/; s/^\(+//' | tr '(' '0' | tr ')' '1')
+		# print path + separator
+		echo -n "$line" | perl -pe 's/^(.+?)[()]+$/$1/'
+		# print hex string
+		binstr2hexstr "$binstr"
+		echo
+	done < "$fn"
+
+done
+
