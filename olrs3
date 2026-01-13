@@ -1,0 +1,109 @@
+#!/bin/bash
+
+export LC_ALL=C
+#separators
+export SEP='  '
+export PSEP='/'
+
+RESULTS_DIR='/tmp/'
+TMP_SUFFIX='-tmp'
+
+display_help() {
+    echo "$0 <input_file.olrs> [<output_directory>]"
+    echo
+    echo "Makes canonical tree strings for olrs (sorted ordnungizer list structure)."
+    echo
+    echo "Arguments:"
+    echo "  <input_file.olrs>  Path to the input olrs file."
+    echo "  <output_directory>  (Optional) Path to the output directory."
+    echo "                            If not provided or not writable, will be set to current dir. "
+    echo "                            If current dir is not writable, will write to '$RESULTS_DIR'"
+}
+
+# validate args
+if [ "$#" -gt 2 ] || [ "$#" -lt 1 ]; then
+    display_help >&2
+    exit 1
+fi
+
+# check output directory
+if [ -n "$2" ] && [ -d "$2" ]; then 
+    if [ -w "$2" ]; then
+        RESULTS_DIR="$2/"
+    elif [ -w "./" ]; then
+        RESULTS_DIR="./"
+        echo "Warning: Output directory '$2' is not writable. Will write to current directory." >&2
+    else
+        echo "Warning: Output directory '$2' is not writable. Will write to '$RESULTS_DIR' instead." >&2
+    fi
+elif [ -w "./" ]; then
+    RESULTS_DIR="./"
+elif [ -w "$RESULTS_DIR" ]; then
+    echo "Warning: Output directory is not provided and current is not writable. Will write to '$RESULTS_DIR' instead." >&2
+else
+    echo "Can't write to '$RESULTS_DIR'." >&2
+    exit 2
+fi
+
+#####################################################################
+# validate olr
+OLRS_FN="$1"
+
+[ ! -f "$OLRS_FN" ] && echo "File '$OLRS_FN' doesn't exist." >&2 && exit 2
+# check olrs is sorted
+last_line=''
+count=0
+while IFS= read -r line; do
+    if ! [[ "$line" > "$last_line" ]]; then
+        printf "File '%s' is not sorted or have duplicated lines (%i-%i).\n" "$OLRS_FN" $count $((count + 1)) >&2
+        exit 3
+    fi
+    last_line="$line"
+    ((count++))
+done <"$OLRS_FN"
+
+printf "%i files and directories to process in '%s'...\n" $count "$OLRS_FN" >&2
+
+#####################################################################
+# main loop
+
+# will write to temporary file
+res_base_fn=$(basename "$OLRS_FN")
+RES_FN_TMP="$RESULTS_DIR${res_base_fn%.olrs}.olr3$TMP_SUFFIX"
+
+printf '' >"$RES_FN_TMP" || exit 4 "Can't write to temporary file '$RES_FN_TMP'."
+
+# cut path from olrs and get it line by line
+while IFS= read -r path; do
+    [[ "$path" =~ ^[[:space:]]*$ ]] && echo "Warning: Empty path found in '$OLRS_FN'." >&2 && continue
+    # calculate canonical tree string for the path
+    canonical="($( grep -oP "^\Q$path\E$PSEP[^$PSEP]+$SEP[()]+$" "$RES_FN_TMP" \
+    | perl -pe "s/^.+$SEP([()]+)$/\1/" \
+    | sort \
+    | tr -d '\n' ))"
+    echo "$path$SEP$canonical" >> "$RES_FN_TMP" || exit 4 "Can't write to temporary file '$RES_FN_TMP'."
+
+done < <(tac "$OLRS_FN" | perl -pe "s/$SEP\[[^]]*\][^[\]]+$/\n/")
+
+RES_FN=${RES_FN_TMP%$TMP_SUFFIX}
+
+# add general at fist string
+canonical="($( grep -oP "^[^$PSEP]+$SEP[()]+$" "$RES_FN_TMP" \
+| perl -pe "s/^.+$SEP([()]+)$/\1/" \
+| sort \
+| tr -d '\n' ))"
+echo ".$SEP$canonical" > "$RES_FN" || exit 5 "Can't write to output file '$RES_FN'."
+
+# turn temporary file to permanent
+sort "${RES_FN_TMP}" >>"${RES_FN}" || exit 5 "Can't write to output file '${RES_FN}'."
+rm "${RES_FN_TMP}" || exit 99 "Can't delete temporary file '$RES_FN_TMP'."
+
+# compare number of lines
+count_res=$(( $(wc -l "$RES_FN" | awk '{print $1}') - 1 ))
+[ $count -ne $count_res ] \
+    && echo "Warning: Number of processed lines ($count_res) differ from input ($count)." >&2 \
+    && exit 98
+
+# final message
+printf "%i files and directories processed in '%s'.\n" $count_res "$RES_FN" >&2
+exit 0
