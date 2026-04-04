@@ -14,7 +14,7 @@ binstr2hexstr() {
 	| while read -r n; do printf "%x" "$((2#$n))"; done 
 }
 
-[ -z "$1" ] && [[ -p /dev/stdin ]] && set -- '-'
+[ $# -eq 0 ] && [[ -p /dev/stdin ]] && set -- "${1:-/dev/stdin}"
 for fn in "$@"; do 
 	while IFS= read -r line; do
 		# save binary string
