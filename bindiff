@@ -1,0 +1,2 @@
+#!/bin/bash
+vimdiff <(xxd -b "$1") <(xxd -b "$2")
