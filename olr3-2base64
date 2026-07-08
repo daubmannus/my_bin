@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# convert olr3 to binary base64 encoded representation line by line
+# input via files or stdin
+# output to stdout
+
+# function to convert binary string to base64
+binstr2base64() {
+	local binstr="$1"
+	local len=${#binstr}
+	local pad=$(( (4 - (len % 4)) % 4 ))
+	local zeros=$(printf '%*s' "$pad" '' | tr ' ' 0)
+	printf '%s' "$zeros$binstr" \
+		| perl -pe '$_=pack("B*", $_)' | base64 -w0
+	echo
+}
+
+[ $# -eq 0 ] && [[ -p /dev/stdin ]] && set -- "${1:-/dev/stdin}"
+for fn in "$@"; do 
+	while IFS= read -r line; do
+		# save binary string
+		binstr=$(echo "$line" | perl -pe 's/^.+?([()]+)$/$1/; s/^\(+//' | tr '(' '0' | tr ')' '1')
+		# print path + separator
+		echo -n "$line" | perl -pe 's/^(.+?)[()]+$/$1/'
+		# print base64
+		binstr2base64 "$binstr"
+		echo
+	done < "$fn"
+
+done
+
