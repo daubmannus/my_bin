@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# crc32sum - md5sum-like wrapper around pycrc for CRC-32
+# crc32sum - md5sum-like wrapper around crc32 utility from package libarchive-zip-perl
 set -euo pipefail
 
 check_file() {
@@ -8,22 +8,16 @@ check_file() {
     [[ -r "$1" ]] || { echo "crc32sum: $1: Permission denied" >&2; return 1; }
 }
 
-norm_crc() {
-    # Normalize pycrc's output to lowercase 8-digit hex (no 0x prefix)
-    perl -lpe '$_ = sprintf("%08x", hex($_))'
-}
-
 crc32_of_file() {
     local f="$1"
     local crc
-    crc=$(pycrc --model crc-32 --check-file "$f" | norm_crc)
+    crc=$(crc32 "$f" | cut -f1 -d' ')
     printf '%s  %s\n' "$crc" "$f"
 }
 
 crc32_of_stdin() {
-    local data crc
-    data=$(cat)
-    crc=$(pycrc --model crc-32 --check-string "$data" | norm_crc)
+    local crc
+    crc=$(crc32 <(cat))
     printf '%s  -\n' "$crc"
 }
 
