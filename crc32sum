@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# crc32sum - md5sum-like wrapper around pycrc for CRC-32
+set -euo pipefail
+
+check_file() {
+    [[ -d "$1" ]] && { echo "crc32sum: $1: Is a directory" >&2; return 1; }
+    [[ -e "$1" ]] || { echo "crc32sum: $1: No such file" >&2; return 1; }
+    [[ -r "$1" ]] || { echo "crc32sum: $1: Permission denied" >&2; return 1; }
+}
+
+norm_crc() {
+    # Normalize pycrc's output to lowercase 8-digit hex (no 0x prefix)
+    perl -lpe '$_ = sprintf("%08x", hex($_))'
+}
+
+crc32_of_file() {
+    local f="$1"
+    local crc
+    crc=$(pycrc --model crc-32 --check-file "$f" | norm_crc)
+    printf '%s  %s\n' "$crc" "$f"
+}
+
+crc32_of_stdin() {
+    local data crc
+    data=$(cat)
+    crc=$(pycrc --model crc-32 --check-string "$data" | norm_crc)
+    printf '%s  -\n' "$crc"
+}
+
+if [[ $# -eq 0 ]]; then
+    crc32_of_stdin
+else
+    status=0
+    for f in "$@"; do
+        if [[ "$f" == "-" ]]; then
+            crc32_of_stdin
+            continue
+        fi
+        check_file "$f" || { status=1; continue; }
+        crc32_of_file "$f"
+    done
+    exit "$status"
+fi
