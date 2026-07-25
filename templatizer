@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# templatizer - substitute {{KEY}} placeholders in a template file
+# Usage: templatizer -t TEMPLATE_FILE [-o OUTPUT_FILE] KEY=VALUE [KEY=VALUE ...]
+set -euo pipefail
+
+PROG=$(basename "$0")
+
+usage() {
+  cat <<EOF
+Usage: $PROG -t TEMPLATE_FILE [-o OUTPUT_FILE] KEY=VALUE [KEY=VALUE ...]
+
+Substitutes {{KEY}} placeholders in TEMPLATE_FILE with given values.
+Substitution is literal (not regex-based), so values may safely contain
+&, \\, /, or any other special characters.
+
+Options:
+  -t FILE    Template file (required)
+  -o FILE    Output file (default: stdout)
+  -h         Show this help
+
+Example:
+  $PROG -t invoice.tmpl -o invoice.out NAME="Ted" DATE="\$(date +%F)" AMOUNT=42.50
+
+Note: if a value itself contains "{{OTHERKEY}}" text, it may get further
+substituted on a later pass since keys are applied in argument order.
+EOF
+}
+
+TEMPLATE=""
+OUTPUT=""
+
+while getopts ":t:o:h" opt; do
+  case "$opt" in
+    t) TEMPLATE="$OPTARG" ;;
+    o) OUTPUT="$OPTARG" ;;
+    h) usage; exit 0 ;;
+    \?) echo "Unknown option: -$OPTARG" >&2; usage; exit 1 ;;
+    :) echo "Option -$OPTARG requires an argument" >&2; usage; exit 1 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if [[ -z "$TEMPLATE" ]]; then
+  echo "Error: template file required (-t)" >&2
+  usage
+  exit 1
+fi
+
+if [[ ! -r "$TEMPLATE" ]]; then
+  echo "Error: cannot read template file: $TEMPLATE" >&2
+  exit 1
+fi
+
+if [[ $# -eq 0 ]]; then
+  echo "Error: no KEY=VALUE pairs given" >&2
+  usage
+  exit 1
+fi
+
+KEYS=()
+for pair in "$@"; do
+  if [[ "$pair" != *=* ]]; then
+    echo "Error: invalid KEY=VALUE pair: $pair" >&2
+    exit 1
+  fi
+  key="${pair%%=*}"
+  value="${pair#*=}"
+  if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo "Error: invalid key name: $key" >&2
+    exit 1
+  fi
+  export "TPLZ_$key=$value"
+  KEYS+=("$key")
+done
+
+export TPLZ_KEYS="${KEYS[*]}"
+
+AWK_BIN=$(command -v awk || command -v gawk || command -v mawk || command -v nawk) || {
+  echo "Error: no awk implementation found in PATH" >&2
+  exit 1
+}
+
+# Literal (non-regex) global find/replace, done manually in awk via
+# index()/substr() so pattern and replacement text never need escaping.
+AWK_SCRIPT='
+function replace_all(s, find, repl,    out, idx, flen) {
+    if (find == "") return s
+    flen = length(find)
+    out = ""
+    while ((idx = index(s, find)) > 0) {
+        out = out substr(s, 1, idx - 1) repl
+        s = substr(s, idx + flen)
+    }
+    return out s
+}
+BEGIN {
+    n = split(ENVIRON["TPLZ_KEYS"], keys, " ")
+}
+{
+    line = $0
+    for (i = 1; i <= n; i++) {
+        k = keys[i]
+        line = replace_all(line, "{{" k "}}", ENVIRON["TPLZ_" k])
+    }
+    print line
+}
+'
+
+if [[ -n "$OUTPUT" ]]; then
+  "$AWK_BIN" "$AWK_SCRIPT" "$TEMPLATE" > "$OUTPUT"
+else
+  "$AWK_BIN" "$AWK_SCRIPT" "$TEMPLATE"
+fi
