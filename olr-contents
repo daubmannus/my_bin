@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# olr-contents - list top-level entries from olr file(s)
+# usage: olr-contents [filename1.olr] [filename2.olr] [...]
+set -euo pipefail
+
+#separator
+SEP='  '
+# SEP is used directly in sed -E patterns below; if it ever contains 
+# regex metacharacters (., *, [, etc.), escape it here!
+
+PROG=$(basename "$0")
+
+usage() {
+  cat <<EOF
+Usage: $PROG [FILENAME1.olr] [FILENAME2.olr] [...]
+
+lists top-level entries (everything before the first '/') from olr file(s),
+sorted and deduplicated for each file
+input: file(s) or stdin; output: stdout
+
+Options:
+  -h    Show this help
+
+Example:
+  $PROG file1.olr file2.olr
+
+Note: when multiple files are given, each output line is prefixed 
+with 'filename:', like grep.
+EOF
+}
+
+while getopts ":h" opt; do
+  case "$opt" in
+    h) usage; exit 0 ;;
+    \?) echo "Unknown option: -$OPTARG" >&2; usage; exit 1 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+
+contents() {
+    local prefix="${2:-}"
+    sed -E "
+      # remove time from the end of string
+        s/^(.+\]).*$/\1/ 
+      # remove non-dir strings
+        \\#^.*\[[^/][^\[]+\]\$#d 
+      # pick first dirname with ending slash
+        s#^([^/]+(${SEP}\[)?/).*#${prefix}\1#
+      # remove ending slash or type group and slash
+        s#(${SEP}\[)?/\$##
+    " "${1:-/dev/stdin}"
+}
+
+
+if [[ $# -eq 0 ]]; then
+    contents | LC_ALL=C sort | uniq
+else
+    prefix=''
+    (( $# > 1 )) && prefix=':'
+    for f in "$@"; do
+        if [[ -r "$f" ]]; then
+            contents "$f" "${prefix:+$f$prefix}"
+        else
+            echo "Error: cannot read file: $f" >&2
+        fi | LC_ALL=C sort | uniq
+    done
+fi
