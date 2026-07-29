@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# olr-subtree - get part of tree from olr file, i.e. strings which start with <root-path>
+# usage: olr-subtree [-s] -R <root-path> [filename1.olr] [filename2.olr] [...]
+set -euo pipefail
+
+PROG=$(basename "$0")
+
+usage() {
+  cat <<EOF
+Usage: $PROG [-s] -R ROOT_PATH [FILENAME1.olr] [FILENAME2.olr] [...]
+
+gets part of tree from olr file, i.e. strings which starts with ROOT_PATH
+input: file(s) or stdin
+output: stdout
+
+Options:
+  -R ROOT_PATH    Tree root (required)
+  -s              olrs mode
+  -h              Show this help
+
+Example:
+  $PROG -R 'some/root-path/here/'
+
+Note: -s (olrs mode) assumes paths are pre-sorted, so scanning stops right
+after the last matching line. This can significantly reduce processing time
+on large files.
+EOF
+}
+
+
+ROOT_PATH=''
+OLRS_MODE=0
+
+while getopts ":R:hs" opt; do
+  case "$opt" in
+    R) ROOT_PATH="$OPTARG" ;;
+    s) OLRS_MODE=1 ;;
+    h) usage; exit 0 ;;
+    \?) echo "Unknown option: -$OPTARG" >&2; usage; exit 1 ;;
+    :) echo "Option -$OPTARG requires an argument" >&2; usage; exit 1 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if [[ -z "$ROOT_PATH" ]]; then
+  echo "Error: ROOT_PATH required (-R)" >&2
+  usage
+  exit 1
+fi
+
+
+subtree() {
+    local was_matched=0
+    while IFS= read -r line; do
+        case $line in
+            "$ROOT_PATH"*) 
+                printf '%s\n' "${line#"$ROOT_PATH"}"
+                was_matched=1
+                ;;
+            *)
+                (( was_matched && OLRS_MODE )) \
+                    && break
+                ;;
+        esac
+    done < "${1:-/dev/stdin}"
+}
+
+
+if [[ $# -eq 0 ]]; then
+    subtree
+else
+    for f in "$@"; do
+        if [[ -r "$f" ]]; then
+            subtree "$f"
+            
+        else
+            echo "Error: cannot read file: $f" >&2
+        fi
+    done
+fi
