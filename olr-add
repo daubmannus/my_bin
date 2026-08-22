@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Generates OLR lines for all items in SRC
+# that do not exist in REFERENCE.olr
+
+PROG=$(basename "$0")
+usage() {
+  cat <<EOF
+Usage: $PROG [SRC] <REFERENCE.olr>
+
+Generates OLR lines for all items in SRC that do not exist in REFERENCE.olr
+Requires 'olr' utility.
+
+Input: REFERENCE.olr file and optional SRC directory path.
+       If SRC is omitted, current directory (.) is used.
+Output: stdout
+
+EOF
+}
+######################################################
+[[ $# -eq 0 ]] && { usage >&2; exit 1; }
+if [[ $# -eq 1 ]]; then
+	SRC="."
+	REF="$1"
+elif [[ $# -eq 2 ]]; then
+	SRC="$1"
+	REF="$2"
+else
+	echo -e "Too many arguments!\n" >&2
+	usage >&2
+	exit 2
+fi
+# echo -e SRC:$SRC\\nREF:$REF >&2
+
+[ -d "$SRC" ] && cd "$SRC" && SRC='.'
+[ -e "$SRC" ] || { echo "SRC '$SRC' not found." >&2; exit 3; }
+[ -f "$REF" ] && [ -s "$REF" ] || { echo "Reference OLR file '$REF' not found or empty." >&2; exit 4; }
+######################################################
+
+for t in d f l b c p s; do
+	while IFS= read -r line; do
+		# echo "${line#./}"
+		grep -P "^\Q${line#./}\E" "$REF" >/dev/null \
+		|| olr "$line"
+	done < <( find "$SRC" -mindepth 1 -type $t )
+done
