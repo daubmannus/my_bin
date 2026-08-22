@@ -1,1 +1,2 @@
-sudo mount -t drvfs U: /mnt/u
+#sudo mount -t drvfs U: /mnt/u
+sudo mount -t drvfs T: /mnt/t
