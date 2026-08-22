@@ -1,7 +1,15 @@
 alias sudo='sudo '
 
+alias rm='trash-put'
+# trash-cli:
+# trash-empty         empty the trashcan(s).
+# trash-list          list trashed files.
+# trash-restore       restore a trashed file.
+# trash-rm            remove individual files from the trashcan.
+
+
 # Interactive operation...
-alias rm='rm -i'
+#alias rm='rm -i'
 # cp: -d = --no-dereference --preserve=links
 # cp: -T, --no-target-directory = treat DEST as a normal file
 alias cp='cp -i'
@@ -24,6 +32,7 @@ alias la='ls -A'
 alias l='ls -CF'
 alias l.='ls -d .* --color=auto'
 alias lli='ls -alFi'
+alias l1='ls -1'
 
 alias scr='screen'
 
@@ -31,6 +40,8 @@ alias cx='chmod +x'
 
 alias e='vim'
 alias v='vim -M'
+
+alias r='fc -s'
 
 alias llblk='lsblk -o name,mountpoint,label,size,fstype,uuid'
 
@@ -45,7 +56,7 @@ alias wg++='PATH=/cygdrive/c/mingw/mingw64/bin/:''"'"$PATH"'"'' g++'
 alias wget-dir='wget -r --no-parent --reject "index.html*" --user-agent="Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36"'
 
 #alias ee='TERM=linux && ee'
-alias ee='sbl'
+#alias ee='sbl'
 
 alias he='hexedit'
 
@@ -155,4 +166,5 @@ alias wttr='curl -H "Accept-Language: uk" wttr.in/50.424972,30.648194?M wttr.in/
 alias wttr-='curl wttr.in/50.424972,30.648194?M'
 alias wttr-m='curl wttr.in/moon'
 
-alias npp='/mnt/c/\!Portablez/npp.8.6.9.portable.x64/notepad++.exe'
+alias npp='/mnt/c/\!Portablez/npp.8.9.1.portable.x64/notepad++.exe'
+
