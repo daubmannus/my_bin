@@ -28,12 +28,27 @@ err_exit() {
 	exit ${@: -1}
 }
 
+usage() {
+  cat <<EOF
+first:
+mkdir -p ~/git && cd ~/git && \\
+git clone https://github.com/daubmannus/my_bin.git
+than run this script and certain files will be copied into
+$trg
+
+EOF
+}
+
 [[ $EUID -ne 0 ]] \
 	&& err_exit "error: the script must be run as root" 1
 
+[[ -d ~/git/my_bin ]] \
+		|| { usage; err_exit "~/git/my_bin not found" 2; }
+cd ~/git/my_bin
+
 for fn in ${list2cp[@]}; do
 	[ -f "$fn" ] \
-		|| err_exit "error: missing file $fn (wrong directory? note: cd to 'my_bin')" 2
+		|| err_exit "error: missing file $fn" 2
 done
 
 
