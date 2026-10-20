@@ -33,7 +33,7 @@ err_exit() {
 
 for fn in ${list2cp[@]}; do
 	[ -f "$fn" ] \
-		|| err_exit "error: missing file $fn (wrong directory?)" 2
+		|| err_exit "error: missing file $fn (wrong directory? note: cd to 'my_bin')" 2
 done
 
 
