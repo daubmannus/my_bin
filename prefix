@@ -1,0 +1,83 @@
+#!/usr/bin/env perl
+# add or remove prefix to non-empty strings
+use strict;
+use warnings;
+
+(my $PROG = $0) =~ s{.*/}{};
+
+sub usage {
+    my $fh = shift;
+    print $fh <<"END_USAGE";
+Usage: $PROG <--add -a|--remove -r -d> <PREFIX> [file1] [file2]
+
+Adds or removes PREFIX to all non-empty strings in the files,
+If files are not specified, use STDIN
+
+Options:
+  -a --add PREFIX         Add PREFIX
+  -r -d --remove PREFIX   Remove PREFIX
+  -h --help               Show this help
+
+Output: stdout
+
+With --remove, strings that don't start with PREFIX are left as is;
+their count is reported on STDERR at the end.
+
+END_USAGE
+}
+# Exit codes:
+#   0  success
+#   1  usage or input file error
+#   2  --remove: some non-empty strings didn't contain PREFIX
+######################################################
+
+sub err {    # err(message [, show_usage]): report and exit 1
+    my ($msg, $with_usage) = @_;
+    print STDERR "$PROG: $msg\n";
+    usage(\*STDERR) if $with_usage;
+    exit 1;
+}
+
+sub reader {    # reader(name): validated input handle; '-' is STDIN
+    my $name = shift;
+    err("'$name' is a directory") if $name ne '-' && -d $name;
+    my ($m, $src) = $name eq '-' ? ('<&', \*STDIN) : ('<', $name);
+    open(my $fh, $m, $src) or err("cannot read '$name': $!");
+    $fh;
+}
+
+# ---- arguments: first one is the option, the rest are files ----
+my %MODE = ('-a' => 'add', '--add' => 'add',
+            map { $_ => 'remove' } qw(-r -d --remove));
+
+my $opt = shift // err('one of --add / --remove is required', 1);
+usage(\*STDOUT), exit 0 if $opt eq '-h' || $opt eq '--help';
+
+my ($mode, $prefix);
+if    ($opt =~ /\A--(add|remove)=(.*)\z/s) { ($mode, $prefix) = ($1, $2) }
+elsif ($mode = $MODE{$opt})                { $prefix = shift // err("$opt requires PREFIX", 1) }
+else  { err("first argument must be --add or --remove, got '$opt'", 1) }
+
+length $prefix or err('PREFIX must not be empty', 1);
+
+# ---- open every input first, so a bad file means no partial output ----
+my @in = map { reader($_) } (@ARGV ? @ARGV : '-');
+
+# ---- one transform per mode; PREFIX is only ever compared literally ----
+my ($n, $miss) = (length $prefix, 0);
+my %do = (
+    add    => sub { $prefix . $_[0] },
+    remove => sub { substr($_[0], 0, $n) eq $prefix ? substr($_[0], $n) : do { $miss++; $_[0] } },
+);
+my $apply = $do{$mode};
+
+for my $fh (@in) {
+    while (<$fh>) {
+        chomp;
+        # print $_ eq '' ? $_ : $apply->($_), "\n";    # empty lines pass through
+        print /\A\s*\z/ ? $_ : $apply->($_), "\n";    # empty or whitespace-only lines pass through
+    }
+}
+    
+close STDOUT or err("write error: $!");
+$miss and print(STDERR "\nWarning: $miss strings don't contain PREFIX.\n"), exit 2;
