@@ -1,0 +1,325 @@
+#!/usr/bin/env bash
+#
+# fixsyms - convert CIFS "mfsymlinks" (XSym) representation files into real
+#           symbolic links.
+#
+# Needs: bash >= 3.2; cat wc tr ln mv rm readlink; md5sum (or md5 / openssl).
+# No find/grep/stat/GNU-only options are required, so it runs on old NAS boxes.
+
+export LC_ALL=C            # byte semantics: ${#x} and ${x:off:len} count bytes
+PROG=${0##*/}
+nl=$'\n'
+
+XSYM_SIZE=1067             # size of files written by the kernel (padded with spaces)
+HDR=43                     # "XSym\n" (5) + "NNNN\n" (5) + 32 hex + "\n" (33)
+TTY=${FIXSYMS_TTY:-/dev/tty}   # prompt/answer device (override only for testing)
+
+OPT_O=0 OPT_F=0 OPT_I=0
+n_found=0 n_conv=0 n_skip=0 n_fail=0 n_err=0
+tty_eof=0 tmpcount=0
+CUR_TMP=
+data= T= REASON= SUM=
+
+warn() { printf '%s: %s\n' "$PROG" "$*" >&2; }
+skip() { n_skip=$((n_skip + 1)); warn "$1: skipped: $2"; }
+fail() { n_fail=$((n_fail + 1)); warn "$1: FAILED: $2"; }
+
+usage() {
+cat <<EOF
+Usage: $PROG [-o|--operands-only] [-f|--force] [-i|--interactive] [path ...]
+
+Replace CIFS mfsymlinks files (XSym format) with real symbolic links.
+With no path, the current directory is searched.
+
+  -o, --operands-only  do not recurse; every operand is a candidate file
+  -f, --force          skip header / length / MD5 checks; the target is taken
+                       from line 4 (file must still be a small regular file
+                       with at least 4 lines)
+  -i, --interactive    ask before converting each candidate
+  -h, --help           show this help
+
+Converted files are listed on stdout as "path -> target"; diagnostics and the
+summary go to stderr.  Exit status: 0 no failures, 1 failures or missing
+paths, 2 usage error.
+EOF
+}
+
+usage_err() { warn "$1"; usage >&2; exit 2; }
+
+cleanup() { [ -n "$CUR_TMP" ] && rm -f -- "$CUR_TMP"; }
+trap cleanup EXIT
+trap 'exit 130' INT TERM HUP
+
+# --- tools -------------------------------------------------------------------
+
+MD5=
+if command -v md5sum >/dev/null 2>&1; then MD5=md5sum
+elif command -v md5 >/dev/null 2>&1; then MD5=md5
+elif command -v openssl >/dev/null 2>&1; then MD5=openssl
+fi
+
+MV_T=                      # GNU mv -T: never move *into* a directory
+if mv --help 2>&1 | grep -q -e '--no-target-directory'; then MV_T=-T; fi
+
+calc_md5() {               # $1 = bytes; result in $SUM
+  case $MD5 in
+    md5sum)  SUM=$(printf %s "$1" | md5sum);   SUM=${SUM%% *} ;;
+    md5)     SUM=$(printf %s "$1" | md5 -q);   SUM=${SUM%% *} ;;
+    openssl) SUM=$(printf %s "$1" | openssl md5); SUM=${SUM##* } ;;
+    *)       SUM= ;;
+  esac
+}
+
+# Exact file contents into $data (trailing newlines preserved via sentinel).
+slurp() {
+  data=$(cat 2>/dev/null <"$1" && printf x) || return 1
+  data=${data%x}
+}
+
+# --- parsing -----------------------------------------------------------------
+
+# Lenient: target = 4th line, trailing CR/padding spaces removed.  Sets $T.
+line_parse() {
+  local rest=$data i
+  T=
+  for i in 1 2 3; do
+    case $rest in
+      *"$nl"*) rest=${rest#*"$nl"} ;;
+      *) REASON="fewer than 4 lines"; return 1 ;;
+    esac
+  done
+  T=${rest%%"$nl"*}
+  T=${T%$'\r'}
+  T=${T%"${T##*[! ]}"}
+  [ -n "$T" ] || { REASON="target is empty"; return 1; }
+  return 0
+}
+
+# Strict: exact kernel layout, decimal length, MD5.  Sets $T on success.
+strict_parse() {
+  local len md avail rest
+  T=
+  [ "${#data}" -gt "$HDR" ] || { REASON="too short for the XSym format"; return 1; }
+  [ "${data:0:5}" = "XSym$nl" ] || { REASON="bad header (first line is not 'XSym')"; return 1; }
+  case ${data:5:4} in
+    *[!0-9]*) REASON="length field is not 4 decimal digits"; return 1 ;;
+  esac
+  [ "${data:9:1}" = "$nl" ] || { REASON="malformed length line"; return 1; }
+  md=${data:10:32}
+  case $md in
+    *[!0-9a-fA-F]*) REASON="checksum field is not 32 hex digits"; return 1 ;;
+  esac
+  [ "${data:42:1}" = "$nl" ] || { REASON="malformed checksum line"; return 1; }
+  len=$((10#${data:5:4}))
+  [ "$len" -gt 0 ] || { REASON="zero target length"; return 1; }
+
+  avail=$(( ${#data} - HDR ))
+  T=${data:$HDR:$len}
+  rest=${data:$((HDR + len))}
+  rest=${rest// /}; rest=${rest//"$nl"/}
+  if [ "$avail" -lt "$len" ] || [ -n "$rest" ]; then
+    line_parse >/dev/null 2>&1          # only to report the real length
+    REASON="length mismatch: header says $len bytes, target line is ${#T} bytes"
+    T=; return 1
+  fi
+
+  [ -n "$MD5" ] || { REASON="no md5 tool available"; T=; return 1; }
+  calc_md5 "$T"
+  md=$(printf %s "$md" | tr 'A-F' 'a-f')
+  if [ "$SUM" != "$md" ]; then
+    # A header length larger than the real target pulls padding spaces into $T;
+    # report that as a length problem when the 4th line has a different length.
+    REASON="MD5 mismatch (header $md, computed $SUM)"
+    if line_parse >/dev/null 2>&1 && [ "${#T}" -ne "$len" ]; then
+      REASON="length mismatch: header says $len bytes, target line is ${#T} bytes (MD5 differs too)"
+    fi
+    T=; return 1
+  fi
+  return 0
+}
+
+# --- interaction -------------------------------------------------------------
+
+confirm() {                # $1 path, $2 target
+  local ans
+  [ "$tty_eof" -eq 0 ] || return 1
+  printf 'Convert %s -> %s ? [y/N] ' "${1//[[:cntrl:]]/?}" "${2//[[:cntrl:]]/?}" >&4
+  if ! IFS= read -r ans <&3; then          # fd 3 = answers, fd 4 = prompts
+    tty_eof=1
+    printf '\n' >&4
+    warn "end of input: declining all remaining candidates"
+    return 1
+  fi
+  case $ans in y|Y|yes|YES|Yes) return 0 ;; esac
+  return 1
+}
+
+# --- conversion --------------------------------------------------------------
+
+convert() {                # $1 path, $2 target; $data holds the original bytes
+  local f=$1 t=$2 orig=$data dir tmp r
+  case $f in
+    */*) dir=${f%/*}; [ -n "$dir" ] || dir=/ ;;
+    *)   dir=. ;;
+  esac
+  while :; do                               # unused temp name, same directory
+    tmpcount=$((tmpcount + 1))
+    tmp="$dir/.fixsyms.$$.$tmpcount.$RANDOM"
+    [ -e "$tmp" ] || [ -L "$tmp" ] || break
+  done
+
+  CUR_TMP=$tmp
+  if ! ln -s -- "$t" "$tmp" 2>/dev/null; then
+    CUR_TMP=
+    fail "$f" "cannot create a symlink in '$dir' (read-only, or no symlink support?)"
+    return 1
+  fi
+  r=$(readlink "$tmp"; printf x)
+  if [ ! -L "$tmp" ] || [ "${r%x}" != "$t$nl" ]; then
+    rm -f -- "$tmp"; CUR_TMP=
+    fail "$f" "the symlink created in '$dir' does not read back correctly"
+    return 1
+  fi
+  # Is the source still exactly what we validated?
+  if [ -L "$f" ] || [ ! -f "$f" ] || ! slurp "$f" 2>/dev/null || [ "$data" != "$orig" ]; then
+    rm -f -- "$tmp"; CUR_TMP=
+    fail "$f" "file changed while being processed; left untouched"
+    return 1
+  fi
+  # shellcheck disable=SC2086
+  if ! mv -f $MV_T -- "$tmp" "$f" 2>/dev/null; then
+    rm -f -- "$tmp"; CUR_TMP=
+    fail "$f" "cannot replace file with symlink (rename failed); original kept"
+    return 1
+  fi
+  CUR_TMP=
+  if [ ! -L "$f" ]; then
+    fail "$f" "replacement did not result in a symlink"
+    return 1
+  fi
+  return 0
+}
+
+process() {                # $1 = regular, non-symlink file
+  local f=$1 size r1
+  n_found=$((n_found + 1))
+
+  size=$(wc -c 2>/dev/null <"$f"); size=${size//[!0-9]/}
+  [ -n "$size" ] || { fail "$f" "cannot read file"; return; }
+  if [ "$size" -gt "$XSYM_SIZE" ]; then
+    skip "$f" "too large ($size bytes; mfsymlinks files are at most $XSYM_SIZE)"; return
+  fi
+  slurp "$f" 2>/dev/null || { fail "$f" "cannot read file"; return; }
+  if [ "${#data}" -ne "$size" ]; then
+    skip "$f" "contains NUL bytes or changed while being read"; return
+  fi
+
+  if ! strict_parse; then
+    if [ "$OPT_F" -eq 1 ]; then
+      r1=$REASON
+      if ! line_parse; then
+        skip "$f" "$r1; --force could not parse it either ($REASON)"; return
+      fi
+      warn "$f: --force: ignoring: $r1"
+    else
+      skip "$f" "$REASON"; return
+    fi
+  fi
+
+  if [ "$OPT_I" -eq 1 ] && ! confirm "$f" "$T"; then
+    n_skip=$((n_skip + 1)); return          # declined
+  fi
+  if convert "$f" "$T"; then
+    n_conv=$((n_conv + 1))
+    printf '%s -> %s\n' "$f" "$T"
+  fi
+}
+
+# --- discovery ---------------------------------------------------------------
+
+walk() {                   # recursive; never follows symlinks
+  local d=$1 e mk
+  if [ ! -r "$d" ] || [ ! -x "$d" ]; then
+    warn "$d: cannot read directory"; n_err=$((n_err + 1)); return
+  fi
+  while [ "${d%/}" != "$d" ]; do d=${d%/}; done   # "/" becomes "" => "/*"
+  for e in "$d"/* "$d"/.[!.]* "$d"/..?*; do
+    [ -L "$e" ] && continue                       # unmatched globs fail every test below
+    if [ -d "$e" ]; then
+      walk "$e"
+    elif [ -f "$e" ]; then
+      if [ ! -r "$e" ]; then
+        warn "$e: cannot read file"; n_err=$((n_err + 1)); continue
+      fi
+      mk=
+      IFS= read -r -n 4 mk 2>/dev/null <"$e"
+      [ "$mk" = XSym ] && process "$e"
+    fi
+  done
+}
+
+operand() {
+  local p=$1
+  if [ -L "$p" ]; then
+    n_found=$((n_found + 1)); skip "$p" "is a symbolic link (not followed)"; return
+  fi
+  if [ ! -e "$p" ]; then
+    warn "$p: no such file or directory"; n_err=$((n_err + 1)); return
+  fi
+  if [ -d "$p" ]; then
+    if [ "$OPT_O" -eq 1 ]; then
+      n_found=$((n_found + 1)); skip "$p" "is a directory (--operands-only)"
+    else
+      walk "$p"
+    fi
+  elif [ -f "$p" ]; then
+    if [ ! -r "$p" ]; then
+      n_found=$((n_found + 1)); fail "$p" "cannot read file"
+    else
+      process "$p"
+    fi
+  else
+    n_found=$((n_found + 1)); skip "$p" "not a regular file"
+  fi
+}
+
+# --- main --------------------------------------------------------------------
+
+while [ $# -gt 0 ]; do
+  case $1 in
+    --)                 shift; break ;;
+    --operands-only)    OPT_O=1 ;;
+    --force)            OPT_F=1 ;;
+    --interactive)      OPT_I=1 ;;
+    --help)             usage; exit 0 ;;
+    --*)                usage_err "unknown option: $1" ;;
+    -?*)
+      flags=${1#-}
+      while [ -n "$flags" ]; do
+        c=${flags%"${flags#?}"}; flags=${flags#?}
+        case $c in
+          o) OPT_O=1 ;; f) OPT_F=1 ;; i) OPT_I=1 ;;
+          h) usage; exit 0 ;;
+          *) usage_err "unknown option: -$c" ;;
+        esac
+      done ;;
+    *)                  break ;;
+  esac
+  shift
+done
+
+if [ "$OPT_I" -eq 1 ]; then
+  ( : <"$TTY" ) 2>/dev/null || usage_err "--interactive needs a terminal ($TTY is not available)"
+  exec 3<"$TTY"                            # answers: read sequentially, opened once
+  if [ -c "$TTY" ]; then exec 4>"$TTY"; else exec 4>&2; fi   # prompts
+fi
+[ -n "$MD5" ] || [ "$OPT_F" -eq 1 ] || usage_err "no md5sum/md5/openssl found (use --force to skip checksums)"
+
+[ $# -gt 0 ] || set -- .
+for p in "$@"; do operand "$p"; done
+
+msg="found $n_found, converted $n_conv, skipped $n_skip, failed $n_fail"
+[ "$n_err" -eq 0 ] || msg="$msg, errors $n_err"
+warn "summary: $msg"
+[ $((n_fail + n_err)) -eq 0 ] || exit 1
+exit 0
