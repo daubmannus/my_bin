@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# bulk edit symlink targets with regex
+# short alias: symsed (messages follow the name it is run as)
+set -euo pipefail
+
+PROG=${0##*/}
+warn() { printf '%s: %s\n' "$PROG" "$*" >&2; }
+usage() {
+  cat <<EOF
+Usage: 
+    $PROG [-i|--interactive] [-n|--dry-run] [-g|--global] TARGET_REGEX REPLACEMENT [path ...]
+
+Bulk edit symlink targets like Perl's s/TARGET_REGEX/REPLACEMENT/
+(first match per target or all with -g|--global).
+REPLACEMENT is interpolated like a double-quoted Perl string:
+\$1, \${1}, \$&, \\n work; escape a literal \$ or @ as \\\$ or \\@.
+Quote args in the shell with single quotes.
+
+Options may appear anywhere. An argument starting with '-' that is not an option
+(regex, replacement or path) needs '--' before it:
+  $PROG -- '-old' '-new' -dir
+In globs write ./* instead of *, so a file named -g is not taken as an option.
+
+Searches recursively; default path is the current directory. A path that is itself
+a symlink to a directory is edited as a link, not traversed; add a trailing slash
+(dir/) to make find traverse it. If find misreads an oddly named path, pass it as
+./path, which is unambiguous.
+
+Options:
+  -i, --interactive    ask before changing each candidate symlink
+  -n, --dry-run        only print what would change (overrides -i)
+  -g, --global         replace all matches in the target, not just the first
+  -h, --help           show this help
+EOF
+}
+usage_err() { warn "$1"; usage >&2; exit 2; }
+
+# FLAGS
+# interactive: ask before each change
+I=0
+# dry-run: only print what would change
+N=0
+# global: replace all matches in each target, not just the first
+G=0
+
+args=()
+while (( $# )); do
+  case $1 in
+    -i|--interactive) I=1 ;;
+    -n|--dry-run)     N=1 ;;
+    -g|--global)      G=1 ;;
+    -h|--help)        usage; exit 0 ;;
+    --)               shift; args+=("$@"); break ;;
+    -?*)              usage_err "unknown option: $1" ;;
+    *)                args+=("$1") ;;
+  esac
+  shift
+done
+set -- ${args[@]+"${args[@]}"}
+
+# dry-run wins over interactive
+(( N )) && I=0
+[[ $# -ge 2 ]] || usage_err "need TARGET_REGEX and REPLACEMENT"
+
+# RE/REPL are passed via the environment to avoid shell/perl quoting issues
+export PROG I N G RE=$1 REPL=$2
+shift 2
+# default search path
+(( $# )) || set -- .
+
+err=$(perl -e 'qr/$ENV{RE}/' 2>&1) || usage_err "invalid regex '$RE': ${err%% at -e*}"
+
+# paths after '--' may still start with '-': prefix them with './' so find sees paths, not expressions
+set -- "${@/#-/./-}"
+find "$@" -type l -print0 | perl -0ne '
+    BEGIN {
+        $| = 1; # autoflush
+        ($p, $re, $rep) = @ENV{qw(PROG RE REPL)};
+        $re = qr/$re/;
+        # compile REPL once as a double-quoted string, so $1, ${1}, $&, \n ... expand per match
+        $sub = eval "sub { qq\x01$rep\x01 }"
+            or do { warn "$p: invalid replacement: $@"; exit 2 };
+        # s///ge replaces all matches, s///e only the first; $re/$sub are globals visible to the eval
+        $flags = $ENV{G} ? "ge" : "e";
+        $subst = eval "sub { \$_[0] =~ s/\$re/\$sub->()/$flags }";
+        # stdin is the find pipe, so prompts are read from the terminal
+        if ($ENV{I}) { open TTY, "</dev/tty" or do { warn "$p: no tty\n"; exit 2 } }
+    }
+    chomp;
+                                       # ENOENT: link vanished (e.g. a temp link renamed after find listed it), ignore
+    defined(my $t = readlink) or do { $!{ENOENT} or do { warn "$p: readlink $_: $!\n"; $rc = 1 }; next };
+
+    my $n = $t;
+    $subst->($n);  # modifies $n in place via @_ aliasing
+
+    next if $n eq $t;                  # target unchanged
+    print "$_: $t -> $n\n";
+    next if $ENV{N};                   # dry-run: report only
+    if ($ENV{I}) {
+        print STDERR "apply? [Y/n] ";
+        (do { local $/ = "\n"; <TTY> } // "n") =~ /^\s*(?:y(?:es)?)?\s*$/i or next;
+    }
+    # atomic replace: create temp link, then rename over the original
+    $tmp = "$_.tmp$$";
+    symlink($n, $tmp) && rename($tmp, $_)
+        or do { warn "$p: $_: $!\n"; unlink $tmp; $rc = 1; next };
+    if ($ENV{I}) { print "relinked\n" }
+    END { $? = $rc // 0 }              # nonzero exit if any link failed
+'
