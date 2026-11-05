@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+# fn255 - recursively find and interactively fix names longer than a byte limit
+# (default 255, the ext4 limit), e.g. when preparing files on NTFS for
+# migration to ext4.
+# alias: fncrop
+set -euo pipefail
+
+PROG=${0##*/}
+SUFFIX=.longname
+DEFAULT_NAME_MAX=255   # bytes; limit of the TARGET filesystem (ext4)
+NAME_MAX=$DEFAULT_NAME_MAX
+
+warn() { printf '%s: %s\n' "$PROG" "$*" >&2; }
+die()  { warn "$*"; exit 2; }
+
+usage() {
+  cat <<EOF
+Usage:
+  $PROG [-n|--dry-run] [-m|--max-bytes BYTES] [-I|--ignore-suffix-length] DIR
+  $PROG -h|--help
+
+Recursively find names under DIR that are longer than BYTES (default
+$DEFAULT_NAME_MAX, the ext4 name limit) and rename them interactively. The length
+is counted in bytes, not characters: NTFS allows 255 UTF-16 units, which can be
+more bytes in UTF-8.
+
+For each offender you get an editable prompt pre-filled with the current name,
+with its length shown as (bytes/limit [bytes left]); a negative number means
+the name is still too long. Enter accepts the name; an empty line restores the
+original name; Ctrl-D skips the entry; Ctrl-C aborts the whole run.
+
+The original name is kept in a dead symlink "<new name>$SUFFIX" next to the
+renamed entry. To leave room for that name, the new name is limited to BYTES
+minus ${#SUFFIX} ($((DEFAULT_NAME_MAX - ${#SUFFIX})) by default), unless -I is given.
+
+DIR is required; use '.' for the current directory. Symlinks are not followed
+and filesystems mounted below DIR are not entered.
+
+Options:
+  -m, --max-bytes BYTES
+        Name length limit in bytes (also --max-bytes=BYTES); default
+        $DEFAULT_NAME_MAX. Allowed: $((${#SUFFIX} + 1))..32766, or 1..32766 with -I.
+  -I, --ignore-suffix-length
+        Do not reserve room for "$SUFFIX": the new name may be up to BYTES long
+        and the length of "<new name>$SUFFIX" is not checked.
+  -n, --dry-run
+        Only list offenders as "bytes<TAB>path" (no tty needed); exit status 1
+        if any were found.
+  -h, --help
+        Show this help.
+
+Exit status: 0 success, 1 offenders found (-n), 2 error, 130 aborted.
+
+Requires: bash 4.4+, GNU find.
+EOF
+}
+
+# Name length in bytes -> BLEN (C locale only inside this function).
+blen() { local LC_ALL=C; BLEN=${#1}; }
+
+# Fix one entry interactively. Updates the global counters.
+# NB: called outside of 'if'/'||' so that 'set -e' stays active; errors are
+# nevertheless handled explicitly.
+fix_one() {
+  local path=$1 n=$2 total=$3
+  local dir=${path%/*} name=${path##*/}
+  local initial=${name//$'\n'/ } cur new prompt link
+
+  cur=$initial
+  blen "$name"
+  printf '\n[%d/%d] %q\n' "$n" "$total" "$path"
+  printf 'Original: %d bytes\n' "$BLEN"
+  [[ $name != *$'\n'* ]] ||
+    warn 'name contains a newline; it is shown as a space in the prompt (the sidecar keeps the real name)'
+
+  while :; do
+    blen "$cur"
+    printf -v prompt '(%d/%d [%d] bytes) new name: ' "$BLEN" "$limit" "$((limit-BLEN))"
+
+    skip=0
+    IFS= read -e -r -i "$cur" -p "$prompt" new || die 'input closed; stopping'
+    if ((skip)); then
+      printf 'Skipped.\n'
+      skipped=$((skipped + 1))
+      return 0
+    fi
+
+    if [[ -z $new ]]; then
+      warn 'empty input: original name restored'
+      cur=$initial
+      continue
+    fi
+    cur=$new   # keep the failed attempt for further editing
+
+    if [[ $new == */* ]]; then
+      warn "name must not contain '/'"; continue
+    fi
+    if [[ $new == . || $new == .. ]]; then
+      warn "'$new' is not a valid file name"; continue
+    fi
+    if [[ $new == *$'\n'* ]]; then
+      warn 'name must not contain a newline'; continue
+    fi
+    blen "$new"
+    if ((BLEN > limit)); then
+      warn "still too long: $BLEN bytes, limit $limit"; continue
+    fi
+    link=$dir/$new$SUFFIX
+    if [[ -e $dir/$new || -L $dir/$new ]]; then
+      warn "already exists: $new"; continue
+    fi
+    if [[ -e $link || -L $link ]]; then
+      warn "already exists: $new$SUFFIX"; continue
+    fi
+    break
+  done
+
+  # Create the sidecar first: if that fails nothing has been changed.
+  ln -s -- "$name" "$link" ||
+    die "cannot create symlink $link; nothing renamed, stopping"
+  if ! mv -nT -- "$path" "$dir/$new" || [[ -e $path || -L $path ]]; then
+    rm -f -- "$link"
+    die "cannot rename $path; stopping (sidecar removed). Fix the problem and re-run."
+  fi
+  printf 'Renamed to %q (original name kept in %q)\n' "$new" "$new$SUFFIX"
+  renamed=$((renamed + 1))
+}
+
+# --- arguments ---------------------------------------------------------------
+dry=0 ignore=0
+while (($#)); do
+  case $1 in
+    -h|--help)    usage; exit 0 ;;
+    -n|--dry-run) dry=1; shift ;;
+    -I|--ignore-suffix-length) ignore=1; shift ;;
+    -m|--max-bytes)
+      (($# >= 2)) || die "option $1 requires an argument"
+      NAME_MAX=$2; shift 2 ;;
+    --max-bytes=*) NAME_MAX=${1#*=}; shift ;;
+    --)           shift; break ;;
+    -?*)          warn "unknown option: $1"; usage >&2; exit 2 ;;
+    *)            break ;;
+  esac
+done
+(($# == 1)) || { usage >&2; exit 2; }
+((BASH_VERSINFO[0] > 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] >= 4))) ||
+  die "bash 4.4 or newer required (this is $BASH_VERSION)"
+[[ $(find --version 2>/dev/null) == *GNU* ]] || die 'GNU find required'
+min=$((ignore ? 1 : ${#SUFFIX} + 1))
+[[ $NAME_MAX =~ ^[0-9]{1,5}$ ]] && ((10#$NAME_MAX >= min && 10#$NAME_MAX <= 32766)) ||
+  die "-m/--max-bytes: expected an integer from $min to 32766, got '$NAME_MAX'"
+NAME_MAX=$((10#$NAME_MAX))
+root=$1
+[[ $root == -* ]] && root=./$root
+[[ -d $root ]] || die "not a directory: $root"
+((dry)) || [[ -t 0 ]] ||
+  die 'stdin is not a terminal; use -n/--dry-run to just list offenders'
+
+# --- scan --------------------------------------------------------------------
+# Limit for the new name: normally with room for the sidecar's suffix.
+if ((ignore)); then limit=$NAME_MAX; else limit=$((NAME_MAX - ${#SUFFIX})); fi
+
+# Deepest entries first, so renaming a directory never invalidates the paths
+# still waiting in the list. -regex in the C locale counts bytes.
+mapfile -d '' -t offenders < <(
+  LC_ALL=C find -H "$root" -xdev -depth -mindepth 1 -regextype posix-extended \
+    -regex ".*/[^/]{$((NAME_MAX + 1)),}" -print0
+)
+wait $! || warn 'find reported errors (unreadable directories?); the list may be incomplete'
+count=${#offenders[@]}
+
+BLEN=0
+if ((dry)); then
+  for path in "${offenders[@]}"; do
+    blen "${path##*/}"
+    printf '%d\t%q\n' "$BLEN" "$path"
+  done
+  exit $((count > 0))
+fi
+
+if ((count == 0)); then
+  printf 'No names longer than %d bytes under %s\n' "$NAME_MAX" "$root"
+  exit 0
+fi
+
+# --- interactive run ---------------------------------------------------------
+[[ $(locale charmap 2>/dev/null) == UTF-8 ]] ||
+  warn 'locale is not UTF-8; editing multibyte names may misbehave'
+trap 'printf "\n"; warn aborted; exit 130' INT
+
+# Ctrl-D skips the entry even on a non-empty line (readline's default only
+# does that on an empty one): the key runs a bound shell command that sets
+# $skip and clears the line, then a macro accepts the line.
+skip=0
+skip_entry() { skip=1; READLINE_LINE=''; }
+set -o emacs   # makes 'bind' work (and stay quiet) in a non-interactive shell
+bind -x '"\C-x\C-s": skip_entry'
+bind '"\C-d": "\C-x\C-s\C-m"'
+
+renamed=0 skipped=0 i=0
+for path in "${offenders[@]}"; do
+  i=$((i + 1))
+  fix_one "$path" "$i" "$count"
+done
+
+printf '\nDone: %d renamed, %d skipped.\n' "$renamed" "$skipped"
+if ((renamed)); then
+  printf 'Review the changes, then update your checksums, e.g.: md5l %q\n' "$root"
+fi
