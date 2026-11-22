@@ -47,6 +47,8 @@ alias llblk='lsblk -o name,mountpoint,label,size,fstype,uuid'
 
 alias r-sync='rsync -avP --append --inplace 2> >(tee -a /tmp/r-sync.$(date +%s).err >&2)'
 
+alias tar-cf='tar --format=posix --pax-option=delete=atime,delete=ctime -cf'
+
 alias md5sum='md5sum -b'
 
 alias 2diff='diff -yW $(($(tput cols)-2))'
