@@ -149,8 +149,10 @@ alias wol='wol --cygwin'
 
 #alias mpv='/cygdrive/c/!Portablez/mpv/mpv-x86_64-20200621-git-dc24a43/mpv.exe'
 #alias ytdl='youtube-dl'
-alias ytdl='yt-dlp'
-alias ytdl-srt='yt-dlp --skip-download --write-sub --write-auto-sub --sub-lang en --convert-subs srt'
+#alias ytdl='yt-dlp'
+alias ytdl='ytdlp --js-runtimes deno:/home/theo/.deno/bin/deno:'
+#alias ytdl-srt='yt-dlp --skip-download --write-sub --write-auto-sub --sub-lang en --convert-subs srt'
+alias ytdl-srt='yt-dlp --js-runtimes deno:/home/theo/.deno/bin/deno --skip-download --write-sub --write-auto-sub --sub-lang en --convert-subs srt'
 
 #alias gs='/cygdrive/c/Program\ Files/gs/gs9.56.1/bin/gswin64c -sFONTPATH="$WINDIR"/fonts -dEmbedAllFonts=true '
 
